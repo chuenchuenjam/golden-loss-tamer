@@ -85,10 +85,10 @@ export const updateRow = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    const patch: { data?: Record<string, unknown>; included_in_export?: boolean } = {};
+    const patch: Record<string, unknown> = {};
     if (data.data !== undefined) patch.data = data.data;
     if (data.included_in_export !== undefined) patch.included_in_export = data.included_in_export;
-    const { error } = await context.supabase.from("extraction_rows").update(patch).eq("id", data.id);
+    const { error } = await (context.supabase.from("extraction_rows") as any).update(patch).eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
