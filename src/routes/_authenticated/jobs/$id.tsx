@@ -14,6 +14,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ArrowLeft, Download, RefreshCw, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { JobSummary } from "@/components/JobSummary";
 
 export const Route = createFileRoute("/_authenticated/jobs/$id")({
   head: () => ({
@@ -98,6 +99,8 @@ function JobDetail() {
           <Button onClick={exportExcel} disabled={downloading || included === 0}><Download className="h-4 w-4 mr-1" /> Export ({included})</Button>
         </div>
       </div>
+
+      <JobSummary rows={rows} issues={issues} />
 
       <Tabs defaultValue="rows">
         <TabsList>
