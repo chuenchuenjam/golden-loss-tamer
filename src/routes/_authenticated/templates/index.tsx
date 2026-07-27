@@ -50,6 +50,11 @@ function TemplatesPage() {
         <h1 className="text-2xl font-semibold">Templates</h1>
         <p className="text-sm text-muted-foreground">Define the fields extracted per line of business. Mark one as the golden source.</p>
       </div>
+      <Card className="border-primary/20 bg-primary/5">
+        <CardContent className="pt-4 text-sm text-muted-foreground">
+          A <b>golden template</b> is your firm's canonical schema for a line of business. Every extraction against it produces the same fields, so submissions become directly comparable — the foundation for triangles, frequency/severity, and pricing benchmarks.
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader><CardTitle>Create template</CardTitle></CardHeader>

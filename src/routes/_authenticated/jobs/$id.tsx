@@ -14,6 +14,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ArrowLeft, Download, RefreshCw, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { JobSummary } from "@/components/JobSummary";
 
 export const Route = createFileRoute("/_authenticated/jobs/$id")({
   head: () => ({
@@ -99,6 +100,8 @@ function JobDetail() {
         </div>
       </div>
 
+      <JobSummary rows={rows} issues={issues} />
+
       <Tabs defaultValue="rows">
         <TabsList>
           <TabsTrigger value="rows">Rows ({rows.length})</TabsTrigger>
@@ -154,7 +157,10 @@ function JobDetail() {
         <TabsContent value="quality">
           <Card>
             <CardHeader><CardTitle className="flex items-center gap-2"><AlertTriangle className="h-4 w-4" /> Data quality issues</CardTitle></CardHeader>
-            <CardContent className="space-y-1">
+            <CardContent className="space-y-2">
+              <div className="rounded-md border p-2 text-xs text-muted-foreground">
+                <b>Why this matters:</b> Errors (duplicates, negative reserves) can double-count losses or hide reserve strengthening. Warnings (missing report date, adverse development) affect lag analysis, reserve adequacy, and trend selection.
+              </div>
               {issues.map((i) => (
                 <div key={i.id} className={cn("border rounded-md p-2 text-sm", i.severity === "error" ? "border-destructive/40 bg-destructive/5" : i.severity === "warning" ? "border-amber-400/40 bg-amber-100/30" : "")}>
                   <div className="flex items-center gap-2">
