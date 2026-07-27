@@ -97,7 +97,7 @@ export const updateTemplate = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    const patch: Record<string, unknown> = {};
+    const patch: { name?: string; fields?: TemplateField[] } = {};
     if (data.name !== undefined) patch.name = data.name;
     if (data.fields !== undefined) patch.fields = data.fields;
     const { data: row, error } = await context.supabase
