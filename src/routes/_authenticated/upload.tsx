@@ -101,6 +101,12 @@ function UploadPage() {
         <h1 className="text-2xl font-semibold">New extraction</h1>
         <p className="text-sm text-muted-foreground">Upload PDF, XLSX or CSV loss runs; AI extracts fields per template.</p>
       </div>
+      <Card className="border-primary/20 bg-primary/5">
+        <CardContent className="pt-4 text-sm space-y-1">
+          <div className="font-medium">Underwriter tip</div>
+          <p className="text-muted-foreground">Pick the <b>golden template</b> for the line of business so extraction produces a consistent schema you can compare across submissions. Attach all valuation periods you have — reconciliation compares them for adverse development.</p>
+        </CardContent>
+      </Card>
       <Card>
         <CardHeader><CardTitle>Job details</CardTitle></CardHeader>
         <CardContent>
