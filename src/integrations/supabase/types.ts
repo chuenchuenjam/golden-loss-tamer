@@ -14,16 +14,325 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      clients: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      data_quality_issues: {
+        Row: {
+          code: string
+          created_at: string
+          field: string | null
+          id: string
+          job_id: string
+          message: string
+          row_id: string | null
+          severity: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          field?: string | null
+          id?: string
+          job_id: string
+          message: string
+          row_id?: string | null
+          severity?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          field?: string | null
+          id?: string
+          job_id?: string
+          message?: string
+          row_id?: string | null
+          severity?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_quality_issues_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "extraction_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_quality_issues_row_id_fkey"
+            columns: ["row_id"]
+            isOneToOne: false
+            referencedRelation: "extraction_rows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      extraction_jobs: {
+        Row: {
+          client_id: string | null
+          completed_at: string | null
+          created_at: string
+          id: string
+          lob_id: string
+          name: string
+          source_files: Json
+          status: string
+          status_message: string | null
+          template_id: string
+          user_id: string
+        }
+        Insert: {
+          client_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          lob_id: string
+          name: string
+          source_files?: Json
+          status?: string
+          status_message?: string | null
+          template_id: string
+          user_id: string
+        }
+        Update: {
+          client_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          lob_id?: string
+          name?: string
+          source_files?: Json
+          status?: string
+          status_message?: string | null
+          template_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "extraction_jobs_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "extraction_jobs_lob_id_fkey"
+            columns: ["lob_id"]
+            isOneToOne: false
+            referencedRelation: "lines_of_business"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "extraction_jobs_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      extraction_rows: {
+        Row: {
+          created_at: string
+          data: Json
+          id: string
+          included_in_export: boolean
+          job_id: string
+          row_index: number
+          source_file: string | null
+        }
+        Insert: {
+          created_at?: string
+          data?: Json
+          id?: string
+          included_in_export?: boolean
+          job_id: string
+          row_index: number
+          source_file?: string | null
+        }
+        Update: {
+          created_at?: string
+          data?: Json
+          id?: string
+          included_in_export?: boolean
+          job_id?: string
+          row_index?: number
+          source_file?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "extraction_rows_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "extraction_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lines_of_business: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          slug: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          slug: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          slug?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          email: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      templates: {
+        Row: {
+          created_at: string
+          fields: Json
+          id: string
+          is_golden: boolean
+          is_system: boolean
+          lob_id: string
+          name: string
+          owner_user_id: string | null
+          source_file_path: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          fields?: Json
+          id?: string
+          is_golden?: boolean
+          is_system?: boolean
+          lob_id: string
+          name: string
+          owner_user_id?: string | null
+          source_file_path?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          fields?: Json
+          id?: string
+          is_golden?: boolean
+          is_system?: boolean
+          lob_id?: string
+          name?: string
+          owner_user_id?: string | null
+          source_file_path?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "templates_lob_id_fkey"
+            columns: ["lob_id"]
+            isOneToOne: false
+            referencedRelation: "lines_of_business"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_template_access: {
+        Row: {
+          granted_at: string
+          template_id: string
+          user_id: string
+        }
+        Insert: {
+          granted_at?: string
+          template_id: string
+          user_id: string
+        }
+        Update: {
+          granted_at?: string
+          template_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_template_access_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "member"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +459,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "member"],
+    },
   },
 } as const
