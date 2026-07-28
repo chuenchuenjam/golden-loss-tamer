@@ -17,6 +17,7 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedClientsRouteImport } from './routes/_authenticated/clients'
 import { Route as AuthenticatedTemplatesIndexRouteImport } from './routes/_authenticated/templates/index'
 import { Route as AuthenticatedJobsIndexRouteImport } from './routes/_authenticated/jobs/index'
+import { Route as ApiPublicBootstrapUsersRouteImport } from './routes/api/public/bootstrap-users'
 import { Route as AuthenticatedTemplatesIdRouteImport } from './routes/_authenticated/templates/$id'
 import { Route as AuthenticatedJobsIdRouteImport } from './routes/_authenticated/jobs/$id'
 import { Route as AuthenticatedAdminTeamRouteImport } from './routes/_authenticated/admin/team'
@@ -62,6 +63,11 @@ const AuthenticatedJobsIndexRoute = AuthenticatedJobsIndexRouteImport.update({
   path: '/jobs/',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ApiPublicBootstrapUsersRoute = ApiPublicBootstrapUsersRouteImport.update({
+  id: '/api/public/bootstrap-users',
+  path: '/api/public/bootstrap-users',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedTemplatesIdRoute =
   AuthenticatedTemplatesIdRouteImport.update({
     id: '/templates/$id',
@@ -95,6 +101,7 @@ export interface FileRoutesByFullPath {
   '/admin/team': typeof AuthenticatedAdminTeamRoute
   '/jobs/$id': typeof AuthenticatedJobsIdRoute
   '/templates/$id': typeof AuthenticatedTemplatesIdRoute
+  '/api/public/bootstrap-users': typeof ApiPublicBootstrapUsersRoute
   '/jobs/': typeof AuthenticatedJobsIndexRoute
   '/templates/': typeof AuthenticatedTemplatesIndexRoute
 }
@@ -108,6 +115,7 @@ export interface FileRoutesByTo {
   '/admin/team': typeof AuthenticatedAdminTeamRoute
   '/jobs/$id': typeof AuthenticatedJobsIdRoute
   '/templates/$id': typeof AuthenticatedTemplatesIdRoute
+  '/api/public/bootstrap-users': typeof ApiPublicBootstrapUsersRoute
   '/jobs': typeof AuthenticatedJobsIndexRoute
   '/templates': typeof AuthenticatedTemplatesIndexRoute
 }
@@ -123,6 +131,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/team': typeof AuthenticatedAdminTeamRoute
   '/_authenticated/jobs/$id': typeof AuthenticatedJobsIdRoute
   '/_authenticated/templates/$id': typeof AuthenticatedTemplatesIdRoute
+  '/api/public/bootstrap-users': typeof ApiPublicBootstrapUsersRoute
   '/_authenticated/jobs/': typeof AuthenticatedJobsIndexRoute
   '/_authenticated/templates/': typeof AuthenticatedTemplatesIndexRoute
 }
@@ -138,6 +147,7 @@ export interface FileRouteTypes {
     | '/admin/team'
     | '/jobs/$id'
     | '/templates/$id'
+    | '/api/public/bootstrap-users'
     | '/jobs/'
     | '/templates/'
   fileRoutesByTo: FileRoutesByTo
@@ -151,6 +161,7 @@ export interface FileRouteTypes {
     | '/admin/team'
     | '/jobs/$id'
     | '/templates/$id'
+    | '/api/public/bootstrap-users'
     | '/jobs'
     | '/templates'
   id:
@@ -165,6 +176,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/team'
     | '/_authenticated/jobs/$id'
     | '/_authenticated/templates/$id'
+    | '/api/public/bootstrap-users'
     | '/_authenticated/jobs/'
     | '/_authenticated/templates/'
   fileRoutesById: FileRoutesById
@@ -173,6 +185,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  ApiPublicBootstrapUsersRoute: typeof ApiPublicBootstrapUsersRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -232,6 +245,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/jobs/'
       preLoaderRoute: typeof AuthenticatedJobsIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/api/public/bootstrap-users': {
+      id: '/api/public/bootstrap-users'
+      path: '/api/public/bootstrap-users'
+      fullPath: '/api/public/bootstrap-users'
+      preLoaderRoute: typeof ApiPublicBootstrapUsersRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/templates/$id': {
       id: '/_authenticated/templates/$id'
@@ -295,6 +315,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  ApiPublicBootstrapUsersRoute: ApiPublicBootstrapUsersRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
