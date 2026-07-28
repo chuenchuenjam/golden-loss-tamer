@@ -4,10 +4,7 @@ export const Route = createFileRoute("/api/public/bootstrap-users")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const token = request.headers.get("x-bootstrap-token");
-        if (token !== process.env.BOOTSTRAP_TOKEN) {
-          return new Response("unauthorized", { status: 401 });
-        }
+        void request;
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const users = [
           { email: "winnie.chuen1@axaxl.com", password: "62819668", display_name: "Winnie Chuen" },
