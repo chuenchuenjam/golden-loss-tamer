@@ -8,7 +8,9 @@ import { seedDemoData } from "@/lib/demo.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Upload, ClipboardList, FileStack, Building2, Sparkles, BookOpen } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { FileStack, Sparkles, BookOpen, Search } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -59,6 +61,25 @@ function Dashboard() {
     acc[j.status] = (acc[j.status] ?? 0) + 1;
     return acc;
   }, {});
+
+  const [q, setQ] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "ready" | "in progress" | "error">("all");
+
+  const needle = q.trim().toLowerCase();
+  const filtered = (jobs as any[]).filter((j) => {
+    const matchesStatus =
+      statusFilter === "all" ||
+      (statusFilter === "ready" && j.status === "ready") ||
+      (statusFilter === "error" && j.status === "error") ||
+      (statusFilter === "in progress" && !["ready", "error"].includes(j.status));
+    if (!matchesStatus) return false;
+    if (!needle) return true;
+    const hay = [j.name, j.clients?.name, j.lines_of_business?.name, j.templates?.name, j.status]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    return hay.includes(needle);
+  });
 
   return (
     <div className="p-6 space-y-6 max-w-6xl">
