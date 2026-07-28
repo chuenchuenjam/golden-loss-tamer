@@ -115,16 +115,20 @@ function UploadPage() {
         <CardHeader><CardTitle>Job details</CardTitle></CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={submit}>
-            <div><Label>Job name</Label><Input value={name} onChange={(e) => setName(e.target.value)} /></div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
-                <Label>Client (optional)</Label>
-                <Select value={clientId} onValueChange={setClientId}>
-                  <SelectTrigger><SelectValue placeholder="No client" /></SelectTrigger>
-                  <SelectContent>
-                    {(clients.data as any[] | undefined)?.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <Label>Carrier name (mandatory)</Label>
+                <Input
+                  list="carrier-options"
+                  value={carrier}
+                  onChange={(e) => setCarrier(e.target.value)}
+                  placeholder="e.g. Travelers"
+                  required
+                />
+                <datalist id="carrier-options">
+                  {(clients.data as any[] | undefined)?.map((c) => <option key={c.id} value={c.name} />)}
+                </datalist>
+                <p className="text-xs text-muted-foreground mt-1">Pick an existing carrier or type a new one — the job is named automatically.</p>
               </div>
               <div>
                 <Label>Line of business</Label>
