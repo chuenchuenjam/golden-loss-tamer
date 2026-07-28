@@ -56,6 +56,8 @@ export const createTemplate = createServerFn({ method: "POST" })
         lob_id: z.string().uuid(),
         fields: z.array(FieldSchema).default([]),
         cloneFrom: z.string().uuid().optional(),
+        source_file_path: z.string().optional(),
+        set_golden: z.boolean().optional(),
       })
       .parse(d),
   )
@@ -69,6 +71,13 @@ export const createTemplate = createServerFn({ method: "POST" })
         .single();
       if (src) fields = src.fields as TemplateField[];
     }
+    if (data.set_golden) {
+      await context.supabase
+        .from("templates")
+        .update({ is_golden: false })
+        .eq("lob_id", data.lob_id)
+        .eq("is_golden", true);
+    }
     const { data: row, error } = await context.supabase
       .from("templates")
       .insert({
@@ -77,7 +86,8 @@ export const createTemplate = createServerFn({ method: "POST" })
         fields,
         owner_user_id: context.userId,
         is_system: false,
-        is_golden: false,
+        is_golden: !!data.set_golden,
+        source_file_path: data.source_file_path ?? null,
       })
       .select()
       .single();
