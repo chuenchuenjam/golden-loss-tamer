@@ -8,8 +8,6 @@ import {
   Upload,
   FileStack,
   Users,
-  Building2,
-  ClipboardList,
   ShieldCheck,
   LogOut,
 } from "lucide-react";
@@ -45,8 +43,6 @@ function AuthLayout() {
   const nav = [
     { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { to: "/upload", label: "New extraction", icon: Upload },
-    { to: "/jobs", label: "Jobs history", icon: ClipboardList },
-    { to: "/clients", label: "Clients", icon: Building2 },
     { to: "/templates", label: "Templates", icon: FileStack },
   ] as const;
   const adminNav = [

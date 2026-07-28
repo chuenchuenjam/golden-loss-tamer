@@ -86,7 +86,7 @@ function JobDetail() {
     <div className="p-6 max-w-none space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Link to="/jobs"><Button variant="ghost" size="sm"><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button></Link>
+          <Link to="/dashboard"><Button variant="ghost" size="sm"><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button></Link>
           <div>
             <h1 className="text-xl font-semibold">{job.name}</h1>
             <div className="text-xs text-muted-foreground">
