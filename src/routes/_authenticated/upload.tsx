@@ -40,10 +40,9 @@ function UploadPage() {
   const lobs = useQuery({ queryKey: ["lobs"], queryFn: () => lobsFn() });
   const clients = useQuery({ queryKey: ["clients"], queryFn: () => clientsFn() });
 
-  const [name, setName] = useState("");
+  const [carrier, setCarrier] = useState("");
   const [lobId, setLobId] = useState<string>("");
   const [templateId, setTemplateId] = useState<string>("");
-  const [clientId, setClientId] = useState<string>("");
   const [files, setFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<string>("");
@@ -55,8 +54,8 @@ function UploadPage() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!name || !templateId || !lobId || files.length === 0) {
-      toast.error("Fill in all fields and add at least one file");
+    if (!carrier.trim() || !templateId || !lobId || files.length === 0) {
+      toast.error("Carrier name, line of business, template and at least one file are required");
       return;
     }
     setBusy(true);
@@ -71,11 +70,15 @@ function UploadPage() {
         if (error) throw new Error(error.message);
         uploaded.push({ name: f.name, path, size: f.size, type: f.type });
       }
+      setProgress("Resolving carrier...");
+      const carrierRow: any = await carrierFn({ data: { name: carrier.trim() } });
+      const lobName = ((lobs.data as any[]) ?? []).find((l) => l.id === lobId)?.name ?? "Loss run";
+      const jobName = `${carrierRow.name} — ${lobName} — ${new Date().toLocaleDateString()}`;
       setProgress("Creating job...");
       const job: any = await createJobFn({
         data: {
-          name,
-          client_id: clientId || null,
+          name: jobName,
+          client_id: carrierRow.id,
           template_id: templateId,
           lob_id: lobId,
           source_files: uploaded,
