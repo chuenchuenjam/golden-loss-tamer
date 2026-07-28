@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { listTemplates, listLobs } from "@/lib/templates.functions";
-import { listClients } from "@/lib/clients.functions";
+import { listClients, resolveCarrier } from "@/lib/clients.functions";
 import { createJob } from "@/lib/jobs.functions";
 import { runExtraction, reconcileJob } from "@/lib/extraction.functions";
 import { useMemo, useState } from "react";
@@ -32,6 +32,7 @@ function UploadPage() {
   const templatesFn = useServerFn(listTemplates);
   const lobsFn = useServerFn(listLobs);
   const clientsFn = useServerFn(listClients);
+  const carrierFn = useServerFn(resolveCarrier);
   const createJobFn = useServerFn(createJob);
   const runFn = useServerFn(runExtraction);
   const recFn = useServerFn(reconcileJob);
@@ -40,10 +41,9 @@ function UploadPage() {
   const lobs = useQuery({ queryKey: ["lobs"], queryFn: () => lobsFn() });
   const clients = useQuery({ queryKey: ["clients"], queryFn: () => clientsFn() });
 
-  const [name, setName] = useState("");
+  const [carrier, setCarrier] = useState("");
   const [lobId, setLobId] = useState<string>("");
   const [templateId, setTemplateId] = useState<string>("");
-  const [clientId, setClientId] = useState<string>("");
   const [files, setFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<string>("");
@@ -55,8 +55,8 @@ function UploadPage() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!name || !templateId || !lobId || files.length === 0) {
-      toast.error("Fill in all fields and add at least one file");
+    if (!carrier.trim() || !templateId || !lobId || files.length === 0) {
+      toast.error("Carrier name, line of business, template and at least one file are required");
       return;
     }
     setBusy(true);
@@ -71,11 +71,15 @@ function UploadPage() {
         if (error) throw new Error(error.message);
         uploaded.push({ name: f.name, path, size: f.size, type: f.type });
       }
+      setProgress("Resolving carrier...");
+      const carrierRow: any = await carrierFn({ data: { name: carrier.trim() } });
+      const lobName = ((lobs.data as any[]) ?? []).find((l) => l.id === lobId)?.name ?? "Loss run";
+      const jobName = `${carrierRow.name} — ${lobName} — ${new Date().toLocaleDateString()}`;
       setProgress("Creating job...");
       const job: any = await createJobFn({
         data: {
-          name,
-          client_id: clientId || null,
+          name: jobName,
+          client_id: carrierRow.id,
           template_id: templateId,
           lob_id: lobId,
           source_files: uploaded,
@@ -111,16 +115,20 @@ function UploadPage() {
         <CardHeader><CardTitle>Job details</CardTitle></CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={submit}>
-            <div><Label>Job name</Label><Input value={name} onChange={(e) => setName(e.target.value)} /></div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
-                <Label>Client (optional)</Label>
-                <Select value={clientId} onValueChange={setClientId}>
-                  <SelectTrigger><SelectValue placeholder="No client" /></SelectTrigger>
-                  <SelectContent>
-                    {(clients.data as any[] | undefined)?.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <Label>Carrier name (mandatory)</Label>
+                <Input
+                  list="carrier-options"
+                  value={carrier}
+                  onChange={(e) => setCarrier(e.target.value)}
+                  placeholder="e.g. Travelers"
+                  required
+                />
+                <datalist id="carrier-options">
+                  {(clients.data as any[] | undefined)?.map((c) => <option key={c.id} value={c.name} />)}
+                </datalist>
+                <p className="text-xs text-muted-foreground mt-1">Pick an existing carrier or type a new one — the job is named automatically.</p>
               </div>
               <div>
                 <Label>Line of business</Label>

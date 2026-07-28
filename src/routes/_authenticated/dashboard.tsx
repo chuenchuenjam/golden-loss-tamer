@@ -8,7 +8,9 @@ import { seedDemoData } from "@/lib/demo.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Upload, ClipboardList, FileStack, Building2, Sparkles, BookOpen } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { FileStack, Sparkles, BookOpen, Search } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -60,6 +62,25 @@ function Dashboard() {
     return acc;
   }, {});
 
+  const [q, setQ] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "ready" | "in progress" | "error">("all");
+
+  const needle = q.trim().toLowerCase();
+  const filtered = (jobs as any[]).filter((j) => {
+    const matchesStatus =
+      statusFilter === "all" ||
+      (statusFilter === "ready" && j.status === "ready") ||
+      (statusFilter === "error" && j.status === "error") ||
+      (statusFilter === "in progress" && !["ready", "error"].includes(j.status));
+    if (!matchesStatus) return false;
+    if (!needle) return true;
+    const hay = [j.name, j.clients?.name, j.lines_of_business?.name, j.templates?.name, j.status]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    return hay.includes(needle);
+  });
+
   return (
     <div className="p-6 space-y-6 max-w-6xl">
       <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -104,38 +125,67 @@ function Dashboard() {
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <QuickAction to="/upload" icon={Upload} title="New extraction" desc="Upload loss run documents and extract." />
-        <QuickAction to="/jobs" icon={ClipboardList} title="Jobs history" desc="Review past extractions." />
         <QuickAction to="/templates" icon={FileStack} title="Templates" desc="Manage extraction schemas per line of business." />
-        <QuickAction to="/clients" icon={Building2} title="Clients" desc="Organize extractions by client." />
       </div>
 
       <Card>
-        <CardHeader><CardTitle>Recent jobs</CardTitle></CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {(jobs as any[]).slice(0, 8).map((j) => (
-              <Link
-                key={j.id}
-                to="/jobs/$id"
-                params={{ id: j.id }}
-                className="flex items-center justify-between border rounded-md px-3 py-2 hover:bg-accent"
-              >
-                <div>
-                  <div className="font-medium text-sm">{j.name}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {j.clients?.name ?? "No client"} · {j.lines_of_business?.name} · {new Date(j.created_at).toLocaleString()}
-                  </div>
-                </div>
-                <Badge variant={j.status === "ready" ? "default" : j.status === "error" ? "destructive" : "secondary"}>{j.status}</Badge>
-              </Link>
-            ))}
-            {jobs.length === 0 && (
-              <p className="text-sm text-muted-foreground">
-                No jobs yet. {isAdmin ? "Click " : "Ask an admin to click "}<b>Load demo data</b> to explore, or start one from <b>New extraction</b>.
-              </p>
-            )}
+        <CardHeader className="gap-3">
+          <CardTitle>Loss run jobs</CardTitle>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative flex-1 min-w-56">
+              <Search className="h-4 w-4 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                className="pl-8"
+                placeholder="Search carrier, job, line of business, template…"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+              />
+            </div>
+            <div className="flex gap-1">
+              {(["all", "ready", "in progress", "error"] as const).map((f) => (
+                <Button key={f} size="sm" variant={statusFilter === f ? "default" : "outline"} onClick={() => setStatusFilter(f)}>
+                  {f === "all" ? "All" : f === "in progress" ? "In progress" : f === "ready" ? "Ready" : "Errors"}
+                </Button>
+              ))}
+            </div>
           </div>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Job</TableHead>
+                <TableHead>Carrier</TableHead>
+                <TableHead>LoB</TableHead>
+                <TableHead>Template</TableHead>
+                <TableHead>Files</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Created</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.map((j) => (
+                <TableRow key={j.id}>
+                  <TableCell><Link to="/jobs/$id" params={{ id: j.id }} className="font-medium hover:underline">{j.name}</Link></TableCell>
+                  <TableCell>{j.clients?.name ?? "—"}</TableCell>
+                  <TableCell>{j.lines_of_business?.name ?? "—"}</TableCell>
+                  <TableCell>{j.templates?.name ?? "—"}</TableCell>
+                  <TableCell>{(j.source_files as any[])?.length ?? 0}</TableCell>
+                  <TableCell><Badge variant={j.status === "ready" ? "default" : j.status === "error" ? "destructive" : "secondary"}>{j.status}</Badge></TableCell>
+                  <TableCell className="text-xs">{new Date(j.created_at).toLocaleString()}</TableCell>
+                </TableRow>
+              ))}
+              {filtered.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-6">
+                    {jobs.length === 0
+                      ? isAdmin ? "No jobs yet. Click Load demo data to explore, or start one from New extraction." : "No jobs yet. Start one from New extraction."
+                      : "No jobs match your search."}
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
     </div>

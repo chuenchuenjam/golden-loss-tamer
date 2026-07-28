@@ -1,60 +1,43 @@
-## Goal
-Seed the app with realistic demo data so a new sign-in immediately shows a populated workspace, and add lightweight underwriter-facing guidance so the flow is self-explanatory.
+## 1. Dashboard — one searchable jobs table
 
-## Part 1 — Demo seed data
+- Remove the "New extraction" quick-action tile and the separate "Recent jobs" list.
+- Replace both with a single **Loss run jobs** table (same columns as the old history page: Job, Carrier, LoB, Template, Files, Status, Created), sorted newest first.
+- Add a search box above the table that filters live across carrier name, job name, line of business, template name and status — so an underwriter can type a carrier and instantly see all that carrier's loss runs consolidated in one view.
+- Add a status filter chip row (All / Ready / In progress / Errors) wired to the same list.
+- Keep the KPI tiles, the "How to use" guide and the admin "Load demo data" button.
+- Keep quick actions for Templates only (drop Jobs history and Clients tiles).
 
-Seed against the first admin user (bootstrapped via `handle_new_user`). A one-shot server function `seedDemoData` (admin-only, idempotent by name) inserts:
+## 2. New extraction page
 
-**Clients (4)**
-- Acme Logistics Inc.
-- Northwind Manufacturing
-- Coastal Restaurant Group
-- Meridian Tech Holdings
+- Remove the **Job name** input. The job name is generated automatically as `{Carrier} — {LoB} — {date}`.
+- Replace **Client (optional)** with **Carrier name (required)**: a text input with autocomplete suggestions from carriers already used. Typing a new carrier creates that record on submit; picking an existing one reuses it. Submission is blocked until a carrier is entered.
+- Rest of the flow (LoB, template, files, extraction, reconcile, redirect to job detail) is unchanged.
 
-**Templates (per LoB, with realistic fields)** — created as system templates so every user sees them; one marked `is_golden` per LoB:
-- General Liability (golden): claim_number, date_of_loss, date_reported, claimant, description, status, incurred, paid, reserve, recovery, cause_of_loss, location
-- Workers Comp (golden): claim_number, date_of_loss, employee, body_part, injury_type, status, indemnity_paid, medical_paid, expense_paid, reserve, incurred, jurisdiction
-- Property (golden): claim_number, date_of_loss, location, peril, description, status, building_paid, contents_paid, bi_paid, reserve, incurred, deductible
-- Auto (golden): claim_number, date_of_loss, driver, vehicle, at_fault, coverage, bi_paid, pd_paid, reserve, incurred, status
-- Cyber, Marine, Professional, Umbrella: minimal 6–8 field templates (non-golden)
+## 3. Left-hand menu
 
-**Extraction jobs (3, status = "ready")** with realistic claim rows in `extraction_rows`:
-1. Acme Logistics — Auto — 2022–2024 loss run — 12 claims across policy years, mix of open/closed, one with reserve increase over periods.
-2. Northwind Manufacturing — Workers Comp — 3-year loss run — 15 claims, includes 1 large loss ($250k incurred) and 2 lost-time.
-3. Coastal Restaurant Group — General Liability — 8 claims, 1 slip-and-fall open with development.
+- Remove **Jobs history** and **Clients** entries. Nav becomes: Dashboard, New extraction, Templates (+ Admin section).
+- The `/jobs` and `/clients` pages are removed; `/jobs/$id` (job detail) stays, reached from the dashboard table.
 
-**Data quality issues** attached to jobs 1 & 2 to showcase the reconciliation panel:
-- "Incurred decreased across valuation dates" (warning) on 1 claim
-- "Missing date_reported" (warning) on 1 claim
-- "Duplicate claim number across files" (error) on 1 claim
-- "Reserve is negative" (error) on 1 claim
+## 4. Templates — build from a document instead of a blank form
 
-Trigger: a "Load demo data" button on the Dashboard (admin only), plus auto-run once if the workspace has 0 clients & 0 jobs on first admin login.
+New flow on the Templates page, replacing the "Create template" blank form:
 
-## Part 2 — Underwriter usability layer
+```text
+Upload PDF/XLSX/CSV  ->  AI proposes fields + sample values
+      ->  User reviews / renames / retypes / deletes fields
+      ->  Confirm  ->  Template saved and set as golden source for its LoB
+```
 
-Small, presentation-only additions so an underwriter (not a developer) can read the screen:
+- **Step 1 – Upload**: pick a line of business, give the template a name, drop one sample loss run (PDF / XLSX / CSV). File goes to the existing private template-uploads storage.
+- **Step 2 – AI proposal**: a new server function reads the document and returns a proposed field list (key, label, type, required, hint) plus 2–3 example values per field pulled from the document, so the user can sanity-check what each field maps to.
+- **Step 3 – Review**: an editable grid showing proposed fields with their sample values. User can edit key/label/type/hint, toggle required, delete fields, and add missing ones.
+- **Step 4 – Confirm**: saves the template with the reviewed fields and marks it as the golden source of truth for that line of business (unsetting any previous golden for that LoB). A confirmation note explains this becomes the canonical schema.
+- Existing templates list, edit page, star/delete actions remain. Cloning stays available as a secondary option from an existing template's row.
 
-- **Dashboard**: add a 3-step "How this works" strip — 1) Pick client & template, 2) Upload loss runs, 3) Review issues & export. Plus KPI tiles: Total incurred, Open claims, Largest loss, Claims with DQ flags (computed from recent jobs).
-- **Upload page**: inline hint under each step explaining *why* (e.g., "The template defines which fields the AI will pull — pick the golden source for consistency across submissions").
-- **Job review (`/jobs/$id`)**: 
-  - Summary bar: Count, Total incurred, Total paid, Total reserve, Open vs Closed, Frequency (claims/yr), Severity (avg incurred).
-  - DQ legend explaining severity colors and what each code means.
-  - Tooltip on each field header describing underwriter use (e.g., "Incurred = paid + reserve; use for burn analysis").
-- **Templates page**: short callout explaining "Golden source = the field set used when reconciling loss runs from multiple carriers/periods for the same insured."
-- **Empty states**: replace bare "No jobs yet" with a one-liner + a "Load demo data" CTA (admin).
+## Technical notes
 
-No changes to extraction/reconciliation logic — just seeding, copy, and a summary component.
-
-## Technical details
-
-- New migration: inserts LoB-scoped system templates (idempotent via `ON CONFLICT` on name+lob_id — add unique index) and demo claim rows tied to a placeholder `created_by = NULL`… **Correction**: `clients.created_by` is NOT NULL, so seeding must happen post-signup via server function, not migration.
-- `src/lib/demo.functions.ts`: `seedDemoData` (admin middleware) — checks for existing "Acme Logistics Inc." to stay idempotent, inserts clients under `context.userId`, inserts jobs, rows, DQ issues. Templates inserted as `is_system = true, owner_user_id = null` so all users see them.
-- `src/components/DemoDataButton.tsx`: dashboard button calling the fn.
-- `src/components/JobSummary.tsx`: computes KPIs from `extraction_rows.data` (client-side reduce over incurred/paid/reserve/status).
-- Dashboard, upload, templates, jobs pages: copy + component additions only.
-
-## Out of scope
-- Real PDF fixtures / re-running AI extraction on demo files (rows are pre-populated directly).
-- Changing extraction, reconciliation, or export logic.
-- Role/permission changes.
+- New server function `inferTemplateFields` in a `templates.functions.ts` sibling: authenticated, downloads the uploaded sample from storage, reuses the existing spreadsheet-to-text helper for XLSX/CSV and base64 PDF passthrough, and calls the Lovable AI Gateway with a structured-output schema `{ fields: [{key,label,type,required,hint,samples[]}] }`.
+- `createTemplate` gains an optional `set_golden` flag (or the UI calls the existing `markGolden` right after create) plus `source_file_path`.
+- Job auto-naming and carrier resolution (find-or-create client by name for the current user) happen in a small addition to `createJob`/`clients.functions.ts`; the `clients` table stays as the carrier store, only the UI label changes to "Carrier".
+- Dashboard search/filter is client-side over the existing `listJobs` result — no new query endpoint.
+- Delete route files for `/jobs/index.tsx` and `/clients.tsx`; keep `listClients` (used for carrier autocomplete).
