@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { listTemplates, listLobs } from "@/lib/templates.functions";
-import { listClients } from "@/lib/clients.functions";
+import { listClients, resolveCarrier } from "@/lib/clients.functions";
 import { createJob } from "@/lib/jobs.functions";
 import { runExtraction, reconcileJob } from "@/lib/extraction.functions";
 import { useMemo, useState } from "react";
@@ -32,6 +32,7 @@ function UploadPage() {
   const templatesFn = useServerFn(listTemplates);
   const lobsFn = useServerFn(listLobs);
   const clientsFn = useServerFn(listClients);
+  const carrierFn = useServerFn(resolveCarrier);
   const createJobFn = useServerFn(createJob);
   const runFn = useServerFn(runExtraction);
   const recFn = useServerFn(reconcileJob);
