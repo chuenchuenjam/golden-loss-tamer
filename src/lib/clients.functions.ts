@@ -26,6 +26,27 @@ export const createClient = createServerFn({ method: "POST" })
     return row;
   });
 
+/** Find an existing carrier by name (case-insensitive) or create it. */
+export const resolveCarrier = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ name: z.string().min(1).max(200) }).parse(d))
+  .handler(async ({ data, context }) => {
+    const name = data.name.trim();
+    const { data: existing } = await context.supabase
+      .from("clients")
+      .select("id, name")
+      .ilike("name", name)
+      .limit(1);
+    if (existing && existing.length > 0) return existing[0];
+    const { data: row, error } = await context.supabase
+      .from("clients")
+      .insert({ name, created_by: context.userId })
+      .select("id, name")
+      .single();
+    if (error) throw new Error(error.message);
+    return row;
+  });
+
 export const deleteClient = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
