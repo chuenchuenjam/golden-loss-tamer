@@ -67,14 +67,30 @@ Document name: ${data.name}`,
     }
 
     const gateway = createLovableAiGateway(apiKey);
-    const { output } = await generateText({
-      model: gateway("openai/gpt-5.5"),
-      messages: [{ role: "user", content: parts as any }],
-      output: Output.object({ schema: ProposedFields }),
-      providerOptions: { lovable: { reasoningEffort: "none" } },
-    });
+    let output: unknown;
+    try {
+      ({ output } = await generateText({
+        model: gateway("openai/gpt-5.5"),
+        messages: [{ role: "user", content: parts as any }],
+        output: Output.object({ schema: ProposedFields }),
+        providerOptions: { lovable: { reasoningEffort: "none" } },
+      }));
+    } catch (e: any) {
+      const status = e?.statusCode ?? e?.status;
+      const body = String(e?.responseBody ?? e?.message ?? "");
+      if (status === 402 || status === 403 || body.includes("credit")) {
+        throw new Error(
+          "AI credits are exhausted for this workspace, so document analysis is unavailable. Add credits in Settings → Plans & credits, then try again.",
+        );
+      }
+      if (status === 429) {
+        throw new Error("AI service is rate limited right now. Please retry in a moment.");
+      }
+      throw new Error(`Document analysis failed: ${body.slice(0, 300)}`);
+    }
 
     const fields = ((output as any)?.fields ?? []) as ProposedField[];
     if (fields.length === 0) throw new Error("No fields could be detected in that document.");
     return { fields };
   });
+
