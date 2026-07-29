@@ -1,28 +1,33 @@
-## 1. Add members from the Team page
+## Goal
 
-- Team page gets an "Add member" form: email + temporary password (min 8 chars) + optional display name.
-- New admin-only server function creates the account (email pre-confirmed) and assigns the `member` role, then the team table refreshes.
-- Duplicate email returns a clear message ("That user already exists").
-- Admin shares the temp password with the person; they sign in on the normal sign-in page. Sign-ups stay disabled.
+Rebuild the Templates section as a 3-step wizard, drop the field "type" concept and the Golden label, and make System templates read-only but copyable.
 
-## 2. Dashboard quick link
+## Step 1 — Upload & name
 
-- Add a "New extraction" primary button in the dashboard header linking to `/upload` (kept alongside the existing searchable jobs table).
+Single card: template name, line of business, file upload (PDF/XLSX/CSV). Continue triggers upload to storage and a new AI call.
 
-## 3. Remove Template access
+## Step 2 — Page selection
 
-- Delete the `/admin/access` page and its sidebar entry; Admin section keeps only Team.
-- Remove the related access-grant server functions. The underlying access table stays in the database (unused) so nothing else breaks.
+- A new server function analyses the document, returns the total page/sheet count and the one page the AI thinks best represents the claim-level data, with a one-line reason.
+- UI shows the AI's recommended page, a page picker (dropdown or list of page numbers/sheet names) so the user can pick a different page, and a text preview of the chosen page so they can judge.
+- For PDFs the "page" is a page number; for spreadsheets it's a sheet name. Both handled by the same picker.
 
-## 4. Template labels: System / Custom / Carrier
+## Step 3 — Extraction review
 
-- Add a `label` column to templates: `System`, `Custom`, `Carrier` (default `Custom`).
-- The 8 built-in generic templates stay `System`; templates created by uploading a document default to `Carrier`.
-- Template list shows the label as a chip next to Golden; an admin can change a template's label from a small dropdown on each row (System templates keep their delete protection).
+- A server function extracts from the selected page only and returns, per detected field: `key` (machine name), `label` (the keyword/header as printed in the document) and `value` (the true value found on that page), plus a hint.
+- Review table columns: Key, Label, Extracted value (editable override), Required, Hint, delete. No Type column anywhere.
+- User edits/overrides any wrong values, adds fields, then Confirm saves the template.
+
+## Template list & editing changes
+
+- Remove the Golden badge, the star "mark golden" action, and golden-related copy from the templates page. `set_golden` is no longer sent on create; existing DB column stays but is unused by the UI.
+- `label` stays: System / Custom / Carrier. New wizard templates save as `Custom`.
+- System templates: no edit (pencil), no delete, no label change. Instead a "Copy" action that clones fields into a new template named "<name> (copy)" with label `Custom`, then opens the editor on the copy.
+- Edit page (`/templates/$id`): remove the Type column; if the template is System, render read-only with a Copy button instead of editable inputs.
 
 ## Technical notes
 
-- Migration: `ALTER TABLE public.templates ADD COLUMN label text NOT NULL DEFAULT 'Custom'` with a check constraint on the three values, backfilled to `System` where `is_system` is true.
-- New `addTeamMember` server fn in `src/lib/admin.functions.ts` using the admin client inside the handler after an admin role check (`createUser` with `email_confirm: true`, then insert into `user_roles`).
-- `createTemplate` gains an optional `label` input, defaulting to `Carrier` for document-driven creation.
-- Files touched: `src/lib/admin.functions.ts`, `src/lib/templates.functions.ts`, `src/routes/_authenticated/admin/team.tsx`, `src/routes/_authenticated/route.tsx`, `src/routes/_authenticated/dashboard.tsx`, `src/routes/_authenticated/templates/index.tsx`; delete `src/routes/_authenticated/admin/access.tsx`.
+- `src/lib/template-infer.functions.ts`: replace the single inference call with two server functions — `analyzeDocumentPages` (returns page list + recommended page + preview text) and `inferFieldsFromPage` (returns key/label/value/hint/required for the chosen page). Both keep the existing 402/429 error handling.
+- Page slicing: for spreadsheets, per-sheet text via the existing `spreadsheetToText` helper split by sheet; for PDFs, pass the whole file to the model with an instruction to read only the requested page (no server-side PDF splitting needed).
+- `src/lib/templates.functions.ts`: drop `type` from `FieldSchema` (fields become key/label/required/hint/value), add a `copyTemplate` server function, stop defaulting to golden.
+- Existing stored templates that carry `type` are ignored gracefully; no migration required.
