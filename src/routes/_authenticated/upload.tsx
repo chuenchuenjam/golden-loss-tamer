@@ -145,7 +145,7 @@ function UploadPage() {
               <Select value={templateId} onValueChange={setTemplateId}>
                 <SelectTrigger><SelectValue placeholder={lobId ? "Select template" : "Pick LoB first"} /></SelectTrigger>
                 <SelectContent>
-                  {filteredTemplates.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}{t.is_golden ? " ★" : ""}</SelectItem>)}
+                  {filteredTemplates.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>

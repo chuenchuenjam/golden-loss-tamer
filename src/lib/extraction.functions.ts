@@ -8,7 +8,7 @@ import { spreadsheetToText } from "./file-parse.server";
 type Field = {
   key: string;
   label: string;
-  type: "string" | "number" | "date" | "boolean";
+  type?: "string" | "number" | "date" | "boolean";
   required?: boolean;
   hint?: string;
 };
@@ -70,7 +70,7 @@ export const runExtraction = createServerFn({ method: "POST" })
     await context.supabase.from("data_quality_issues").delete().eq("job_id", data.job_id);
 
     const fieldsList = fields
-      .map((f) => `- ${f.key} (${f.type}${f.required ? ", required" : ""}): ${f.label}${f.hint ? ` — ${f.hint}` : ""}`)
+      .map((f) => `- ${f.key}${f.required ? " (required)" : ""}: ${f.label}${f.hint ? ` — ${f.hint}` : ""}`)
       .join("\n");
 
     const sysPrompt = `You extract loss-run claim rows from insurance documents.
