@@ -1,8 +1,8 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { listTemplates, listLobs, createTemplate, deleteTemplate, markGolden, setTemplateLabel } from "@/lib/templates.functions";
-import { inferTemplateFields } from "@/lib/template-infer.functions";
+import { listTemplates, listLobs, createTemplate, deleteTemplate, setTemplateLabel, copyTemplate } from "@/lib/templates.functions";
+import { analyzeDocumentPages, inferFieldsFromPage } from "@/lib/template-infer.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, Star, Pencil, Plus, Upload as UploadIcon } from "lucide-react";
+import { Trash2, Pencil, Plus, Upload as UploadIcon, Copy } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/templates/")({
@@ -30,19 +30,22 @@ export const Route = createFileRoute("/_authenticated/templates/")({
 type DraftField = {
   key: string;
   label: string;
-  type: "string" | "number" | "date" | "boolean";
+  value: string;
   required: boolean;
   hint: string;
-  samples: string[];
 };
 
+const STEPS = ["Upload document", "Choose page", "Review fields"];
+
 function TemplatesPage() {
+  const navigate = useNavigate();
   const list = useServerFn(listTemplates);
   const lobs = useServerFn(listLobs);
   const create = useServerFn(createTemplate);
   const del = useServerFn(deleteTemplate);
-  const golden = useServerFn(markGolden);
-  const infer = useServerFn(inferTemplateFields);
+  const copy = useServerFn(copyTemplate);
+  const analyzePages = useServerFn(analyzeDocumentPages);
+  const inferPage = useServerFn(inferFieldsFromPage);
   const setLabel = useServerFn(setTemplateLabel);
 
   const qc = useQueryClient();
@@ -54,19 +57,29 @@ function TemplatesPage() {
   const [file, setFile] = useState<File | null>(null);
   const [draft, setDraft] = useState<DraftField[] | null>(null);
   const [sourcePath, setSourcePath] = useState<string>("");
-  const [step, setStep] = useState<"upload" | "review">("upload");
+  const [pages, setPages] = useState<string[]>([]);
+  const [page, setPage] = useState<string>("");
+  const [reason, setReason] = useState<string>("");
+  const [step, setStep] = useState<1 | 2 | 3>(1);
   const [busy, setBusy] = useState(false);
 
   const dm = useMutation({ mutationFn: (id: string) => del({ data: { id } }), onSuccess: () => qc.invalidateQueries({ queryKey: ["templates"] }) });
-  const gm = useMutation({ mutationFn: (id: string) => golden({ data: { id } }), onSuccess: () => { qc.invalidateQueries({ queryKey: ["templates"] }); toast.success("Marked as golden source"); } });
+  const cm = useMutation({
+    mutationFn: (id: string) => copy({ data: { id } }),
+    onSuccess: (row: any) => {
+      qc.invalidateQueries({ queryKey: ["templates"] });
+      toast.success("Copied as a custom template");
+      navigate({ to: "/templates/$id", params: { id: row.id } });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
   const lm = useMutation({
     mutationFn: (p: { id: string; label: string }) => setLabel({ data: p as { id: string; label: "System" | "Custom" | "Carrier" } }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["templates"] }); toast.success("Label updated"); },
     onError: (e: any) => toast.error(e.message),
   });
 
-
-  async function analyze(e: React.FormEvent) {
+  async function submitStep1(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim() || !lobId || !file) {
       toast.error("Template name, line of business and a sample document are required");
@@ -79,13 +92,29 @@ function TemplatesPage() {
       const path = `${uid}/${Date.now()}-${file.name}`;
       const { error } = await supabase.storage.from("template-uploads").upload(path, file, { upsert: false });
       if (error) throw new Error(error.message);
-      const res: any = await infer({ data: { path, name: file.name, type: file.type } });
+      const res: any = await analyzePages({ data: { path, name: file.name, type: file.type } });
       setSourcePath(path);
-      setDraft(res.fields as DraftField[]);
-      setStep("review");
-      toast.success(`Detected ${res.fields.length} fields — review before confirming`);
+      setPages(res.pages);
+      setPage(res.recommendedPage);
+      setReason(res.reason);
+      setStep(2);
     } catch (err: any) {
       toast.error(err.message ?? "Could not analyse that document");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function submitStep2() {
+    if (!file || !page) return;
+    setBusy(true);
+    try {
+      const res: any = await inferPage({ data: { path: sourcePath, name: file.name, type: file.type, page } });
+      setDraft(res.fields as DraftField[]);
+      setStep(3);
+      toast.success(`Detected ${res.fields.length} fields — review the values`);
+    } catch (err: any) {
+      toast.error(err.message ?? "Could not extract that page");
     } finally {
       setBusy(false);
     }
@@ -103,13 +132,13 @@ function TemplatesPage() {
         data: {
           name: name.trim(),
           lob_id: lobId,
-          fields: draft.map(({ key, label, type, required, hint }) => ({ key, label, type, required, hint })),
+          fields: draft.map(({ key, label, required, hint, value }) => ({ key, label, required, hint, value })),
           source_file_path: sourcePath,
-          set_golden: true,
+          label: "Custom",
         },
       });
       qc.invalidateQueries({ queryKey: ["templates"] });
-      toast.success("Template confirmed as the golden source of truth");
+      toast.success("Template saved");
       reset();
     } catch (e: any) {
       toast.error(e.message);
@@ -119,26 +148,31 @@ function TemplatesPage() {
   }
 
   function reset() {
-    setName(""); setLobId(""); setFile(null); setDraft(null); setSourcePath(""); setStep("upload");
+    setName(""); setLobId(""); setFile(null); setDraft(null); setSourcePath("");
+    setPages([]); setPage(""); setReason(""); setStep(1);
   }
 
   return (
     <div className="p-6 max-w-4xl space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Templates</h1>
-        <p className="text-sm text-muted-foreground">Build a template from a real loss run, review the detected fields, then confirm it as the golden source.</p>
+        <p className="text-sm text-muted-foreground">Build a template from a real loss run in three steps: upload, pick the page, review the extracted values.</p>
       </div>
-      <Card className="border-primary/20 bg-primary/5">
-        <CardContent className="pt-4 text-sm text-muted-foreground">
-          A <b>golden template</b> is your firm's canonical schema for a line of business. Every extraction against it produces the same fields, so submissions become directly comparable — the foundation for triangles, frequency/severity, and pricing benchmarks.
-        </CardContent>
-      </Card>
 
-      {step === "upload" ? (
-        <Card>
-          <CardHeader><CardTitle>Create template from a document</CardTitle></CardHeader>
-          <CardContent>
-            <form className="space-y-3" onSubmit={analyze}>
+      <Card>
+        <CardHeader>
+          <CardTitle>Create template</CardTitle>
+          <div className="flex flex-wrap gap-2 pt-2">
+            {STEPS.map((s, i) => (
+              <div key={s} className={`flex items-center gap-2 rounded-full border px-3 py-1 text-xs ${step === i + 1 ? "border-primary bg-primary/10 text-foreground" : "text-muted-foreground"}`}>
+                <span className="font-semibold">{i + 1}</span> {s}
+              </div>
+            ))}
+          </div>
+        </CardHeader>
+        <CardContent>
+          {step === 1 && (
+            <form className="space-y-3" onSubmit={submitStep1}>
               <div className="grid gap-2 sm:grid-cols-2">
                 <div>
                   <Label>Template name</Label>
@@ -162,52 +196,73 @@ function TemplatesPage() {
                   <input type="file" className="hidden" accept=".pdf,.xlsx,.xls,.csv,application/pdf" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
                 </label>
               </div>
-              <Button className="w-full" disabled={busy}>{busy ? "Analysing document…" : "Analyse & propose fields"}</Button>
+              <Button className="w-full" disabled={busy}>{busy ? "Analysing document…" : "Continue"}</Button>
             </form>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card>
-          <CardHeader><CardTitle>Review detected fields — {name}</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
-            <p className="text-sm text-muted-foreground">Check each field against the sample values pulled from your document. Edit names, types and hints, remove anything you don't need, then confirm.</p>
-            <div className="space-y-2">
-              {draft?.map((f, i) => (
-                <div key={i} className="border rounded-md p-3 space-y-2">
-                  <div className="grid gap-2 sm:grid-cols-4">
-                    <Input placeholder="key" value={f.key} onChange={(e) => patch(i, { key: e.target.value })} />
-                    <Input placeholder="label" value={f.label} onChange={(e) => patch(i, { label: e.target.value })} />
-                    <Select value={f.type} onValueChange={(v) => patch(i, { type: v as DraftField["type"] })}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {["string", "number", "date", "boolean"].map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    <div className="flex items-center justify-between gap-2">
-                      <label className="flex items-center gap-2 text-sm">
-                        <Checkbox checked={f.required} onCheckedChange={(v) => patch(i, { required: !!v })} /> Required
-                      </label>
-                      <Button type="button" variant="ghost" size="icon" onClick={() => setDraft((d) => d!.filter((_, idx) => idx !== i))}><Trash2 className="h-4 w-4" /></Button>
+          )}
+
+          {step === 2 && (
+            <div className="space-y-4">
+              <div className="rounded-md border bg-muted/40 p-3 text-sm">
+                <div className="font-medium">AI suggests: {page}</div>
+                <div className="text-muted-foreground">{reason}</div>
+              </div>
+              <p className="text-sm text-muted-foreground">Does this page cover every field you want to extract? If not, pick another one.</p>
+              <div className="grid gap-2 sm:grid-cols-3">
+                {pages.map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setPage(p)}
+                    className={`rounded-md border px-3 py-2 text-sm text-left ${p === page ? "border-primary bg-primary/10" : "hover:bg-accent"}`}
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={submitStep2} disabled={busy || !page}>{busy ? "Extracting…" : "Extract this page"}</Button>
+                <Button variant="outline" onClick={() => setStep(1)} disabled={busy}>Back</Button>
+              </div>
+            </div>
+          )}
+
+          {step === 3 && (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">Check each detected field against your document. Override any value the AI got wrong, then confirm to save this as a template.</p>
+              <div className="grid grid-cols-12 gap-2 px-2 text-xs font-medium text-muted-foreground">
+                <div className="col-span-3">Keyword (key)</div>
+                <div className="col-span-3">Label</div>
+                <div className="col-span-4">Extracted value</div>
+                <div className="col-span-2 text-center">Required</div>
+              </div>
+              <div className="space-y-2">
+                {draft?.map((f, i) => (
+                  <div key={i} className="border rounded-md p-3 space-y-2">
+                    <div className="grid grid-cols-12 gap-2 items-center">
+                      <Input className="col-span-3" placeholder="key" value={f.key} onChange={(e) => patch(i, { key: e.target.value.replace(/\s+/g, "_").toLowerCase() })} />
+                      <Input className="col-span-3" placeholder="label" value={f.label} onChange={(e) => patch(i, { label: e.target.value })} />
+                      <Input className="col-span-4" placeholder="value" value={f.value} onChange={(e) => patch(i, { value: e.target.value })} />
+                      <div className="col-span-2 flex items-center justify-center gap-2">
+                        <Checkbox checked={f.required} onCheckedChange={(v) => patch(i, { required: !!v })} />
+                        <Button type="button" variant="ghost" size="icon" onClick={() => setDraft((d) => d!.filter((_, idx) => idx !== i))}><Trash2 className="h-4 w-4" /></Button>
+                      </div>
                     </div>
+                    <Input placeholder="hint for the extraction model" value={f.hint} onChange={(e) => patch(i, { hint: e.target.value })} />
                   </div>
-                  <Input placeholder="hint" value={f.hint} onChange={(e) => patch(i, { hint: e.target.value })} />
-                  {f.samples?.length > 0 && (
-                    <div className="text-xs text-muted-foreground">Samples: {f.samples.slice(0, 3).join(" · ")}</div>
-                  )}
-                </div>
-              ))}
+                ))}
+              </div>
+              <Button type="button" variant="outline" size="sm" onClick={() => setDraft((d) => [...(d ?? []), { key: "", label: "", value: "", required: false, hint: "" }])}>
+                <Plus className="h-4 w-4 mr-1" /> Add field
+              </Button>
+              <div className="flex gap-2">
+                <Button onClick={confirm} disabled={busy}>{busy ? "Saving…" : "Confirm & save template"}</Button>
+                <Button variant="outline" onClick={() => setStep(2)} disabled={busy}>Back</Button>
+                <Button variant="ghost" onClick={reset} disabled={busy}>Cancel</Button>
+              </div>
             </div>
-            <Button type="button" variant="outline" size="sm" onClick={() => setDraft((d) => [...(d ?? []), { key: "", label: "", type: "string", required: false, hint: "", samples: [] }])}>
-              <Plus className="h-4 w-4 mr-1" /> Add field
-            </Button>
-            <p className="text-xs text-muted-foreground">Confirming saves this template and sets it as the golden source of truth for the selected line of business, replacing any previous golden template there.</p>
-            <div className="flex gap-2">
-              <Button onClick={confirm} disabled={busy}>{busy ? "Saving…" : "Confirm as golden source"}</Button>
-              <Button variant="outline" onClick={reset} disabled={busy}>Cancel</Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader><CardTitle>All templates</CardTitle></CardHeader>
@@ -217,7 +272,6 @@ function TemplatesPage() {
               <div className="min-w-0">
                 <div className="flex items-center gap-2 text-sm font-medium">
                   {t.name}
-                  {t.is_golden && <Badge className="bg-amber-500 hover:bg-amber-500">Golden</Badge>}
                   <Badge variant={t.label === "System" ? "secondary" : "outline"}>{t.label ?? "Custom"}</Badge>
                 </div>
                 <div className="text-xs text-muted-foreground">
@@ -225,15 +279,23 @@ function TemplatesPage() {
                 </div>
               </div>
               <div className="flex items-center gap-1">
-                <Select value={t.label ?? "Custom"} onValueChange={(v) => lm.mutate({ id: t.id, label: v })}>
-                  <SelectTrigger className="h-8 w-[120px] text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {["System", "Custom", "Carrier"].map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                {!t.is_golden && <Button variant="ghost" size="icon" onClick={() => gm.mutate(t.id)}><Star className="h-4 w-4" /></Button>}
-                <Link to="/templates/$id" params={{ id: t.id }}><Button variant="ghost" size="icon"><Pencil className="h-4 w-4" /></Button></Link>
-                {!t.is_system && <Button variant="ghost" size="icon" onClick={() => dm.mutate(t.id)}><Trash2 className="h-4 w-4" /></Button>}
+                {t.is_system ? (
+                  <Button variant="outline" size="sm" onClick={() => cm.mutate(t.id)} disabled={cm.isPending}>
+                    <Copy className="h-4 w-4 mr-1" /> Copy &amp; edit
+                  </Button>
+                ) : (
+                  <>
+                    <Select value={t.label ?? "Custom"} onValueChange={(v) => lm.mutate({ id: t.id, label: v })}>
+                      <SelectTrigger className="h-8 w-[120px] text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {["System", "Custom", "Carrier"].map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    <Button variant="ghost" size="icon" onClick={() => cm.mutate(t.id)}><Copy className="h-4 w-4" /></Button>
+                    <Link to="/templates/$id" params={{ id: t.id }}><Button variant="ghost" size="icon"><Pencil className="h-4 w-4" /></Button></Link>
+                    <Button variant="ghost" size="icon" onClick={() => dm.mutate(t.id)}><Trash2 className="h-4 w-4" /></Button>
+                  </>
+                )}
               </div>
             </div>
           ))}
