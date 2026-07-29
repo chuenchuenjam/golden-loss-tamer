@@ -1,33 +1,34 @@
 ## Goal
 
-Rebuild the Templates section as a 3-step wizard, drop the field "type" concept and the Golden label, and make System templates read-only but copyable.
+In Step 2 of the template wizard ("Choose page"), show the uploaded document next to the page list, and jump the preview to whichever page the user selects — so they can visually confirm the data location before extracting.
 
-## Step 1 — Upload & name
+## Layout
 
-Single card: template name, line of business, file upload (PDF/XLSX/CSV). Continue triggers upload to storage and a new AI call.
+```text
++---------------------------+------------------------------+
+| Pages / sheets            |  Document preview             |
+| [x] Page 3  (AI pick)     |  renders the SELECTED page    |
+| [ ] Page 4                |  PDF -> scrolls to that page  |
+| [ ] Page 5                |  Excel -> that sheet as table |
+| reason: "..."             |                               |
+| [Extract this page]       |                               |
++---------------------------+------------------------------+
+```
 
-## Step 2 — Page selection
+Two-column grid on desktop (list ~1/3, preview ~2/3); stacked on mobile with the preview under the list.
 
-- A new server function analyses the document, returns the total page/sheet count and the one page the AI thinks best represents the claim-level data, with a one-line reason.
-- UI shows the AI's recommended page, a page picker (dropdown or list of page numbers/sheet names) so the user can pick a different page, and a text preview of the chosen page so they can judge.
-- For PDFs the "page" is a page number; for spreadsheets it's a sheet name. Both handled by the same picker.
+## Behaviour
 
-## Step 3 — Extraction review
-
-- A server function extracts from the selected page only and returns, per detected field: `key` (machine name), `label` (the keyword/header as printed in the document) and `value` (the true value found on that page), plus a hint.
-- Review table columns: Key, Label, Extracted value (editable override), Required, Hint, delete. No Type column anywhere.
-- User edits/overrides any wrong values, adds fields, then Confirm saves the template.
-
-## Template list & editing changes
-
-- Remove the Golden badge, the star "mark golden" action, and golden-related copy from the templates page. `set_golden` is no longer sent on create; existing DB column stays but is unused by the UI.
-- `label` stays: System / Custom / Carrier. New wizard templates save as `Custom`.
-- System templates: no edit (pencil), no delete, no label change. Instead a "Copy" action that clones fields into a new template named "<name> (copy)" with label `Custom`, then opens the editor on the copy.
-- Edit page (`/templates/$id`): remove the Type column; if the template is System, render read-only with a Copy button instead of editable inputs.
+- The file the user picked in Step 1 is already in the browser, so the preview is built from a local object URL — no extra download, no cost.
+- PDF: embed in an iframe using the browser's built-in viewer and the `#page=N` fragment. Clicking a different page re-points the viewer to that page. Add a small "Open in new tab" link as a fallback for browsers that block the inline viewer.
+- Excel/CSV: parse the workbook client-side and render the selected sheet as a scrollable HTML table (first ~50 rows), with a row/column count caption so the user can see the claim table structure.
+- Other/unsupported types: show a plain notice instead of a broken frame.
+- The AI's recommended page is highlighted as "AI suggestion" and is what the preview opens on.
+- Step 3 also gets a compact reminder line ("Extracted from: <page>") so the reviewed values stay tied to their source location.
 
 ## Technical notes
 
-- `src/lib/template-infer.functions.ts`: replace the single inference call with two server functions — `analyzeDocumentPages` (returns page list + recommended page + preview text) and `inferFieldsFromPage` (returns key/label/value/hint/required for the chosen page). Both keep the existing 402/429 error handling.
-- Page slicing: for spreadsheets, per-sheet text via the existing `spreadsheetToText` helper split by sheet; for PDFs, pass the whole file to the model with an instruction to read only the requested page (no server-side PDF splitting needed).
-- `src/lib/templates.functions.ts`: drop `type` from `FieldSchema` (fields become key/label/required/hint/value), add a `copyTemplate` server function, stop defaulting to golden.
-- Existing stored templates that carry `type` are ignored gracefully; no migration required.
+- Changes are confined to `src/routes/_authenticated/templates/index.tsx` plus a new small `src/components/DocumentPreview.tsx`.
+- `xlsx` is already installed and is browser-safe, so the sheet preview uses it directly in the component; no server function or storage signed-URL work is needed.
+- Page identifiers coming back from the analyzer (e.g. `Page 3`, or a sheet name) are mapped to either a PDF page number or a sheet key inside the preview component.
+- No schema, backend, or extraction-logic changes.
