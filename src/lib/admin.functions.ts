@@ -53,41 +53,36 @@ export const setUserRole = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-export const listTemplateAccess = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    await ensureAdmin(context.supabase, context.userId);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data, error } = await supabaseAdmin.from("user_template_access").select("*");
-    if (error) throw new Error(error.message);
-    return data;
-  });
-
-export const setTemplateAccess = createServerFn({ method: "POST" })
+export const addTeamMember = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>
     z
-      .object({ user_id: z.string().uuid(), template_id: z.string().uuid(), grant: z.boolean() })
+      .object({
+        email: z.string().email(),
+        password: z.string().min(8),
+        display_name: z.string().optional(),
+      })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
     await ensureAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    if (data.grant) {
-      const { error } = await supabaseAdmin
-        .from("user_template_access")
-        .upsert(
-          { user_id: data.user_id, template_id: data.template_id },
-          { onConflict: "user_id,template_id" },
-        );
-      if (error) throw new Error(error.message);
-    } else {
-      const { error } = await supabaseAdmin
-        .from("user_template_access")
-        .delete()
-        .eq("user_id", data.user_id)
-        .eq("template_id", data.template_id);
-      if (error) throw new Error(error.message);
+    const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
+      email: data.email,
+      password: data.password,
+      email_confirm: true,
+      user_metadata: data.display_name ? { display_name: data.display_name } : {},
+    });
+    if (error) {
+      const msg = /already/i.test(error.message)
+        ? "That user already exists"
+        : error.message;
+      throw new Error(msg);
     }
-    return { ok: true };
+    const uid = created.user!.id;
+    await supabaseAdmin
+      .from("user_roles")
+      .upsert({ user_id: uid, role: "member" }, { onConflict: "user_id,role" });
+    return { ok: true, user_id: uid };
   });
+

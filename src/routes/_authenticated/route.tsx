@@ -8,9 +8,9 @@ import {
   Upload,
   FileStack,
   Users,
-  ShieldCheck,
   LogOut,
 } from "lucide-react";
+
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -47,8 +47,8 @@ function AuthLayout() {
   ] as const;
   const adminNav = [
     { to: "/admin/team", label: "Team", icon: Users },
-    { to: "/admin/access", label: "Template access", icon: ShieldCheck },
   ] as const;
+
 
   return (
     <div className="min-h-screen flex bg-muted/30">
