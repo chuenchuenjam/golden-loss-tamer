@@ -8,7 +8,7 @@ import { spreadsheetToText } from "./file-parse.server";
 type Field = {
   key: string;
   label: string;
-  type: "string" | "number" | "date" | "boolean";
+  type?: "string" | "number" | "date" | "boolean";
   required?: boolean;
   hint?: string;
 };
