@@ -210,13 +210,19 @@ function TemplatesPage() {
                 <div className="flex items-center gap-2 text-sm font-medium">
                   {t.name}
                   {t.is_golden && <Badge className="bg-amber-500 hover:bg-amber-500">Golden</Badge>}
-                  {t.is_system && <Badge variant="secondary">System</Badge>}
+                  <Badge variant={t.label === "System" ? "secondary" : "outline"}>{t.label ?? "Custom"}</Badge>
                 </div>
                 <div className="text-xs text-muted-foreground">
                   {t.lines_of_business?.name} · {(t.fields as any[])?.length ?? 0} fields
                 </div>
               </div>
-              <div className="flex gap-1">
+              <div className="flex items-center gap-1">
+                <Select value={t.label ?? "Custom"} onValueChange={(v) => lm.mutate({ id: t.id, label: v })}>
+                  <SelectTrigger className="h-8 w-[120px] text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {["System", "Custom", "Carrier"].map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                  </SelectContent>
+                </Select>
                 {!t.is_golden && <Button variant="ghost" size="icon" onClick={() => gm.mutate(t.id)}><Star className="h-4 w-4" /></Button>}
                 <Link to="/templates/$id" params={{ id: t.id }}><Button variant="ghost" size="icon"><Pencil className="h-4 w-4" /></Button></Link>
                 {!t.is_system && <Button variant="ghost" size="icon" onClick={() => dm.mutate(t.id)}><Trash2 className="h-4 w-4" /></Button>}
@@ -225,6 +231,7 @@ function TemplatesPage() {
           ))}
         </CardContent>
       </Card>
+
     </div>
   );
 }
