@@ -1,15 +1,28 @@
-## Why "Analyse & propose fields" fails
+## 1. Add members from the Team page
 
-It is not your credit balance — the workspace has 164.80 credits remaining. A workspace **AI Gateway spend limit is set to 4.00 credits per month with the "block usage" action**, and this project's monthly AI Gateway usage has already passed it. Every model call is therefore rejected before it reaches the model: gateway log `019fa955-3dfc-782f-86b2-d58b72ab4aa0` (2026-07-28T15:26:03Z) returned HTTP 403 `credit_hard_block_workspace` after 52 ms.
+- Team page gets an "Add member" form: email + temporary password (min 8 chars) + optional display name.
+- New admin-only server function creates the account (email pre-confirmed) and assigns the `member` role, then the team table refreshes.
+- Duplicate email returns a clear message ("That user already exists").
+- Admin shares the temp password with the person; they sign in on the normal sign-in page. Sign-ups stay disabled.
 
-## Plan
+## 2. Dashboard quick link
 
-1. Raise the workspace AI Gateway credit limit from 4.00 to **50.00 credits per month**, keeping the alert and block behaviour in place as a safety ceiling.
-2. Re-run "Analyse & propose fields" against a sample document and confirm the gateway returns a successful call (checked against the AI Gateway request log, not just the UI).
-3. If the request now succeeds but is slow — an earlier successful analysis took 98 seconds — report that back so we can decide whether to trim the prompt or lower reasoning cost in a follow-up.
+- Add a "New extraction" primary button in the dashboard header linking to `/upload` (kept alongside the existing searchable jobs table).
+
+## 3. Remove Template access
+
+- Delete the `/admin/access` page and its sidebar entry; Admin section keeps only Team.
+- Remove the related access-grant server functions. The underlying access table stays in the database (unused) so nothing else breaks.
+
+## 4. Template labels: System / Custom / Carrier
+
+- Add a `label` column to templates: `System`, `Custom`, `Carrier` (default `Custom`).
+- The 8 built-in generic templates stay `System`; templates created by uploading a document default to `Carrier`.
+- Template list shows the label as a chip next to Golden; an admin can change a template's label from a small dropdown on each row (System templates keep their delete protection).
 
 ## Technical notes
 
-- The error surfacing added to `src/lib/template-infer.functions.ts` stays; it correctly maps 402/403/credit errors to a readable message and will remain useful if the cap is hit again.
-- No schema, route, or UI changes are needed — the extraction path itself is intact and was working earlier today (log `019fa83d-df77-78df-8ab1-93c46430b5cb`, 200 OK, 13,359 in / 12,176 out tokens, 1.73 credits).
-- The same block also affects the document extraction flow on the upload page, so raising the cap unblocks both.
+- Migration: `ALTER TABLE public.templates ADD COLUMN label text NOT NULL DEFAULT 'Custom'` with a check constraint on the three values, backfilled to `System` where `is_system` is true.
+- New `addTeamMember` server fn in `src/lib/admin.functions.ts` using the admin client inside the handler after an admin role check (`createUser` with `email_confirm: true`, then insert into `user_roles`).
+- `createTemplate` gains an optional `label` input, defaulting to `Carrier` for document-driven creation.
+- Files touched: `src/lib/admin.functions.ts`, `src/lib/templates.functions.ts`, `src/routes/_authenticated/admin/team.tsx`, `src/routes/_authenticated/route.tsx`, `src/routes/_authenticated/dashboard.tsx`, `src/routes/_authenticated/templates/index.tsx`; delete `src/routes/_authenticated/admin/access.tsx`.

@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { FileStack, Sparkles, BookOpen, Search } from "lucide-react";
+import { FileStack, Sparkles, BookOpen, Search, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -88,17 +88,18 @@ function Dashboard() {
           <h1 className="text-2xl font-semibold">Underwriter workspace</h1>
           <p className="text-sm text-muted-foreground">Turn carrier loss run documents into clean, reconciled data ready for pricing and risk analysis.</p>
         </div>
-        {isAdmin && jobs.length === 0 && (
-          <Button onClick={() => seedM.mutate()} disabled={seedM.isPending}>
-            <Sparkles className="h-4 w-4 mr-1" /> Load demo data
-          </Button>
-        )}
-        {isAdmin && jobs.length > 0 && (
-          <Button variant="outline" onClick={() => seedM.mutate()} disabled={seedM.isPending}>
-            <Sparkles className="h-4 w-4 mr-1" /> Load demo data
-          </Button>
-        )}
+        <div className="flex gap-2">
+          <Link to="/upload">
+            <Button><Upload className="h-4 w-4 mr-1" /> New extraction</Button>
+          </Link>
+          {isAdmin && (
+            <Button variant="outline" onClick={() => seedM.mutate()} disabled={seedM.isPending}>
+              <Sparkles className="h-4 w-4 mr-1" /> Load demo data
+            </Button>
+          )}
+        </div>
       </div>
+
 
       <Card className="border-primary/20 bg-primary/5">
         <CardHeader className="pb-2">

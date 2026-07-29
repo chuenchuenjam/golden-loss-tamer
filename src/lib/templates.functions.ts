@@ -58,6 +58,7 @@ export const createTemplate = createServerFn({ method: "POST" })
         cloneFrom: z.string().uuid().optional(),
         source_file_path: z.string().optional(),
         set_golden: z.boolean().optional(),
+        label: z.enum(["System", "Custom", "Carrier"]).optional(),
       })
       .parse(d),
   )
@@ -87,6 +88,7 @@ export const createTemplate = createServerFn({ method: "POST" })
         owner_user_id: context.userId,
         is_system: false,
         is_golden: !!data.set_golden,
+        label: data.label ?? "Carrier",
         source_file_path: data.source_file_path ?? null,
       })
       .select()
@@ -94,6 +96,23 @@ export const createTemplate = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return row;
   });
+
+export const setTemplateLabel = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({ id: z.string().uuid(), label: z.enum(["System", "Custom", "Carrier"]) })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("templates")
+      .update({ label: data.label })
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 
 export const updateTemplate = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

@@ -18,7 +18,6 @@ import { Route as AuthenticatedTemplatesIndexRouteImport } from './routes/_authe
 import { Route as AuthenticatedTemplatesIdRouteImport } from './routes/_authenticated/templates/$id'
 import { Route as AuthenticatedJobsIdRouteImport } from './routes/_authenticated/jobs/$id'
 import { Route as AuthenticatedAdminTeamRouteImport } from './routes/_authenticated/admin/team'
-import { Route as AuthenticatedAdminAccessRouteImport } from './routes/_authenticated/admin/access'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -66,19 +65,12 @@ const AuthenticatedAdminTeamRoute = AuthenticatedAdminTeamRouteImport.update({
   path: '/admin/team',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedAdminAccessRoute =
-  AuthenticatedAdminAccessRouteImport.update({
-    id: '/admin/access',
-    path: '/admin/access',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/upload': typeof AuthenticatedUploadRoute
-  '/admin/access': typeof AuthenticatedAdminAccessRoute
   '/admin/team': typeof AuthenticatedAdminTeamRoute
   '/jobs/$id': typeof AuthenticatedJobsIdRoute
   '/templates/$id': typeof AuthenticatedTemplatesIdRoute
@@ -89,7 +81,6 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/upload': typeof AuthenticatedUploadRoute
-  '/admin/access': typeof AuthenticatedAdminAccessRoute
   '/admin/team': typeof AuthenticatedAdminTeamRoute
   '/jobs/$id': typeof AuthenticatedJobsIdRoute
   '/templates/$id': typeof AuthenticatedTemplatesIdRoute
@@ -102,7 +93,6 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/upload': typeof AuthenticatedUploadRoute
-  '/_authenticated/admin/access': typeof AuthenticatedAdminAccessRoute
   '/_authenticated/admin/team': typeof AuthenticatedAdminTeamRoute
   '/_authenticated/jobs/$id': typeof AuthenticatedJobsIdRoute
   '/_authenticated/templates/$id': typeof AuthenticatedTemplatesIdRoute
@@ -115,7 +105,6 @@ export interface FileRouteTypes {
     | '/auth'
     | '/dashboard'
     | '/upload'
-    | '/admin/access'
     | '/admin/team'
     | '/jobs/$id'
     | '/templates/$id'
@@ -126,7 +115,6 @@ export interface FileRouteTypes {
     | '/auth'
     | '/dashboard'
     | '/upload'
-    | '/admin/access'
     | '/admin/team'
     | '/jobs/$id'
     | '/templates/$id'
@@ -138,7 +126,6 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/dashboard'
     | '/_authenticated/upload'
-    | '/_authenticated/admin/access'
     | '/_authenticated/admin/team'
     | '/_authenticated/jobs/$id'
     | '/_authenticated/templates/$id'
@@ -216,20 +203,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminTeamRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/admin/access': {
-      id: '/_authenticated/admin/access'
-      path: '/admin/access'
-      fullPath: '/admin/access'
-      preLoaderRoute: typeof AuthenticatedAdminAccessRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedUploadRoute: typeof AuthenticatedUploadRoute
-  AuthenticatedAdminAccessRoute: typeof AuthenticatedAdminAccessRoute
   AuthenticatedAdminTeamRoute: typeof AuthenticatedAdminTeamRoute
   AuthenticatedJobsIdRoute: typeof AuthenticatedJobsIdRoute
   AuthenticatedTemplatesIdRoute: typeof AuthenticatedTemplatesIdRoute
@@ -239,7 +218,6 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedUploadRoute: AuthenticatedUploadRoute,
-  AuthenticatedAdminAccessRoute: AuthenticatedAdminAccessRoute,
   AuthenticatedAdminTeamRoute: AuthenticatedAdminTeamRoute,
   AuthenticatedJobsIdRoute: AuthenticatedJobsIdRoute,
   AuthenticatedTemplatesIdRoute: AuthenticatedTemplatesIdRoute,
@@ -257,13 +235,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

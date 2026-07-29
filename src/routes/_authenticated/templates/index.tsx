@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { listTemplates, listLobs, createTemplate, deleteTemplate, markGolden } from "@/lib/templates.functions";
+import { listTemplates, listLobs, createTemplate, deleteTemplate, markGolden, setTemplateLabel } from "@/lib/templates.functions";
 import { inferTemplateFields } from "@/lib/template-infer.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
@@ -43,6 +43,8 @@ function TemplatesPage() {
   const del = useServerFn(deleteTemplate);
   const golden = useServerFn(markGolden);
   const infer = useServerFn(inferTemplateFields);
+  const setLabel = useServerFn(setTemplateLabel);
+
   const qc = useQueryClient();
   const templates = useQuery({ queryKey: ["templates"], queryFn: () => list() });
   const lobList = useQuery({ queryKey: ["lobs"], queryFn: () => lobs() });
@@ -57,6 +59,12 @@ function TemplatesPage() {
 
   const dm = useMutation({ mutationFn: (id: string) => del({ data: { id } }), onSuccess: () => qc.invalidateQueries({ queryKey: ["templates"] }) });
   const gm = useMutation({ mutationFn: (id: string) => golden({ data: { id } }), onSuccess: () => { qc.invalidateQueries({ queryKey: ["templates"] }); toast.success("Marked as golden source"); } });
+  const lm = useMutation({
+    mutationFn: (p: { id: string; label: string }) => setLabel({ data: p as { id: string; label: "System" | "Custom" | "Carrier" } }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["templates"] }); toast.success("Label updated"); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
 
   async function analyze(e: React.FormEvent) {
     e.preventDefault();
@@ -210,13 +218,19 @@ function TemplatesPage() {
                 <div className="flex items-center gap-2 text-sm font-medium">
                   {t.name}
                   {t.is_golden && <Badge className="bg-amber-500 hover:bg-amber-500">Golden</Badge>}
-                  {t.is_system && <Badge variant="secondary">System</Badge>}
+                  <Badge variant={t.label === "System" ? "secondary" : "outline"}>{t.label ?? "Custom"}</Badge>
                 </div>
                 <div className="text-xs text-muted-foreground">
                   {t.lines_of_business?.name} · {(t.fields as any[])?.length ?? 0} fields
                 </div>
               </div>
-              <div className="flex gap-1">
+              <div className="flex items-center gap-1">
+                <Select value={t.label ?? "Custom"} onValueChange={(v) => lm.mutate({ id: t.id, label: v })}>
+                  <SelectTrigger className="h-8 w-[120px] text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {["System", "Custom", "Carrier"].map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                  </SelectContent>
+                </Select>
                 {!t.is_golden && <Button variant="ghost" size="icon" onClick={() => gm.mutate(t.id)}><Star className="h-4 w-4" /></Button>}
                 <Link to="/templates/$id" params={{ id: t.id }}><Button variant="ghost" size="icon"><Pencil className="h-4 w-4" /></Button></Link>
                 {!t.is_system && <Button variant="ghost" size="icon" onClick={() => dm.mutate(t.id)}><Trash2 className="h-4 w-4" /></Button>}
@@ -225,6 +239,7 @@ function TemplatesPage() {
           ))}
         </CardContent>
       </Card>
+
     </div>
   );
 }
