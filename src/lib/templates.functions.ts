@@ -5,9 +5,9 @@ import { z } from "zod";
 const FieldSchema = z.object({
   key: z.string().min(1),
   label: z.string().min(1),
-  type: z.enum(["string", "number", "date", "boolean"]).default("string"),
   required: z.boolean().default(false),
   hint: z.string().default(""),
+  value: z.string().default(""),
 });
 
 export type TemplateField = z.infer<typeof FieldSchema>;
@@ -57,7 +57,6 @@ export const createTemplate = createServerFn({ method: "POST" })
         fields: z.array(FieldSchema).default([]),
         cloneFrom: z.string().uuid().optional(),
         source_file_path: z.string().optional(),
-        set_golden: z.boolean().optional(),
         label: z.enum(["System", "Custom", "Carrier"]).optional(),
       })
       .parse(d),
@@ -72,13 +71,6 @@ export const createTemplate = createServerFn({ method: "POST" })
         .single();
       if (src) fields = src.fields as TemplateField[];
     }
-    if (data.set_golden) {
-      await context.supabase
-        .from("templates")
-        .update({ is_golden: false })
-        .eq("lob_id", data.lob_id)
-        .eq("is_golden", true);
-    }
     const { data: row, error } = await context.supabase
       .from("templates")
       .insert({
@@ -87,9 +79,34 @@ export const createTemplate = createServerFn({ method: "POST" })
         fields,
         owner_user_id: context.userId,
         is_system: false,
-        is_golden: !!data.set_golden,
-        label: data.label ?? "Carrier",
+        label: data.label ?? "Custom",
         source_file_path: data.source_file_path ?? null,
+      })
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    return row;
+  });
+
+export const copyTemplate = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { data: src, error: e1 } = await context.supabase
+      .from("templates")
+      .select("name, lob_id, fields")
+      .eq("id", data.id)
+      .single();
+    if (e1 || !src) throw new Error(e1?.message ?? "Template not found");
+    const { data: row, error } = await context.supabase
+      .from("templates")
+      .insert({
+        name: `${src.name} (copy)`,
+        lob_id: src.lob_id,
+        fields: src.fields,
+        owner_user_id: context.userId,
+        is_system: false,
+        label: "Custom",
       })
       .select()
       .single();
@@ -132,33 +149,6 @@ export const updateTemplate = createServerFn({ method: "POST" })
     const { data: row, error } = await context.supabase
       .from("templates")
       .update(patch)
-      .eq("id", data.id)
-      .select()
-      .single();
-    if (error) throw new Error(error.message);
-    return row;
-  });
-
-export const markGolden = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
-  .handler(async ({ data, context }) => {
-    // Fetch target
-    const { data: tpl, error: e1 } = await context.supabase
-      .from("templates")
-      .select("id, lob_id")
-      .eq("id", data.id)
-      .single();
-    if (e1 || !tpl) throw new Error(e1?.message ?? "Template not found");
-    // Unset other golden in same lob
-    await context.supabase
-      .from("templates")
-      .update({ is_golden: false })
-      .eq("lob_id", tpl.lob_id)
-      .eq("is_golden", true);
-    const { data: row, error } = await context.supabase
-      .from("templates")
-      .update({ is_golden: true })
       .eq("id", data.id)
       .select()
       .single();
