@@ -61,8 +61,34 @@ function TeamPage() {
     <div className="p-6 max-w-5xl space-y-4">
       <div>
         <h1 className="text-2xl font-semibold">Team</h1>
-        <p className="text-sm text-muted-foreground">Grant admin access. Admins can manage templates and access rules.</p>
+        <p className="text-sm text-muted-foreground">Add members and grant admin access. Admins can manage templates.</p>
       </div>
+
+      <Card>
+        <CardHeader><CardTitle className="flex items-center gap-2"><UserPlus className="h-4 w-4" /> Add member</CardTitle></CardHeader>
+        <CardContent>
+          <form
+            className="grid gap-3 sm:grid-cols-4 items-end"
+            onSubmit={(e) => { e.preventDefault(); add.mutate(); }}
+          >
+            <div>
+              <Label>Email</Label>
+              <Input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="person@company.com" />
+            </div>
+            <div>
+              <Label>Temporary password</Label>
+              <Input type="text" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="min 8 characters" />
+            </div>
+            <div>
+              <Label>Display name (optional)</Label>
+              <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+            </div>
+            <Button disabled={add.isPending}>{add.isPending ? "Adding…" : "Add member"}</Button>
+          </form>
+          <p className="text-xs text-muted-foreground mt-2">The account is created active — share the temporary password with them; they sign in on the normal sign-in page.</p>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader><CardTitle>Members</CardTitle></CardHeader>
         <CardContent>
