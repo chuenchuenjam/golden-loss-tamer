@@ -234,6 +234,7 @@ export type Database = {
           id: string
           is_golden: boolean
           is_system: boolean
+          label: string
           lob_id: string
           name: string
           owner_user_id: string | null
@@ -246,6 +247,7 @@ export type Database = {
           id?: string
           is_golden?: boolean
           is_system?: boolean
+          label?: string
           lob_id: string
           name: string
           owner_user_id?: string | null
@@ -258,6 +260,7 @@ export type Database = {
           id?: string
           is_golden?: boolean
           is_system?: boolean
+          label?: string
           lob_id?: string
           name?: string
           owner_user_id?: string | null
