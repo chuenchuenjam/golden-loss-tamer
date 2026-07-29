@@ -201,34 +201,39 @@ function TemplatesPage() {
           )}
 
           {step === 2 && (
-            <div className="space-y-4">
-              <div className="rounded-md border bg-muted/40 p-3 text-sm">
-                <div className="font-medium">AI suggests: {page}</div>
-                <div className="text-muted-foreground">{reason}</div>
+            <div className="grid gap-4 lg:grid-cols-3">
+              <div className="space-y-4 lg:col-span-1">
+                <div className="rounded-md border bg-muted/40 p-3 text-sm">
+                  <div className="font-medium">AI suggests: {page}</div>
+                  <div className="text-muted-foreground">{reason}</div>
+                </div>
+                <p className="text-sm text-muted-foreground">Does this page cover every field you want to extract? Pick another one to see it in the preview.</p>
+                <div className="grid gap-2">
+                  {pages.map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setPage(p)}
+                      className={`rounded-md border px-3 py-2 text-sm text-left ${p === page ? "border-primary bg-primary/10" : "hover:bg-accent"}`}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <Button onClick={submitStep2} disabled={busy || !page}>{busy ? "Extracting…" : "Extract this page"}</Button>
+                  <Button variant="outline" onClick={() => setStep(1)} disabled={busy}>Back</Button>
+                </div>
               </div>
-              <p className="text-sm text-muted-foreground">Does this page cover every field you want to extract? If not, pick another one.</p>
-              <div className="grid gap-2 sm:grid-cols-3">
-                {pages.map((p) => (
-                  <button
-                    key={p}
-                    type="button"
-                    onClick={() => setPage(p)}
-                    className={`rounded-md border px-3 py-2 text-sm text-left ${p === page ? "border-primary bg-primary/10" : "hover:bg-accent"}`}
-                  >
-                    {p}
-                  </button>
-                ))}
-              </div>
-              <div className="flex gap-2">
-                <Button onClick={submitStep2} disabled={busy || !page}>{busy ? "Extracting…" : "Extract this page"}</Button>
-                <Button variant="outline" onClick={() => setStep(1)} disabled={busy}>Back</Button>
-              </div>
+              <DocumentPreview file={file} page={page} className="lg:col-span-2" />
             </div>
           )}
 
           {step === 3 && (
             <div className="space-y-3">
+              <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm">Extracted from: <span className="font-medium">{page}</span> of {file?.name}</div>
               <p className="text-sm text-muted-foreground">Check each detected field against your document. Override any value the AI got wrong, then confirm to save this as a template.</p>
+
               <div className="grid grid-cols-12 gap-2 px-2 text-xs font-medium text-muted-foreground">
                 <div className="col-span-3">Keyword (key)</div>
                 <div className="col-span-3">Label</div>
