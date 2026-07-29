@@ -1,11 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { listUsersWithRoles, setUserRole } from "@/lib/admin.functions";
+import { useState } from "react";
+import { listUsersWithRoles, setUserRole, addTeamMember } from "@/lib/admin.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { UserPlus } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/admin/team")({
@@ -23,8 +28,24 @@ export const Route = createFileRoute("/_authenticated/admin/team")({
 function TeamPage() {
   const listFn = useServerFn(listUsersWithRoles);
   const roleFn = useServerFn(setUserRole);
+  const addFn = useServerFn(addTeamMember);
   const qc = useQueryClient();
   const { data = [], error } = useQuery({ queryKey: ["team"], queryFn: () => listFn(), retry: false });
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [displayName, setDisplayName] = useState("");
+
+  const add = useMutation({
+    mutationFn: () =>
+      addFn({ data: { email: email.trim(), password, display_name: displayName.trim() || undefined } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["team"] });
+      toast.success(`${email.trim()} can now sign in with the temporary password`);
+      setEmail(""); setPassword(""); setDisplayName("");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
 
   const m = useMutation({
     mutationFn: (p: { user_id: string; role: "admin" | "member"; grant: boolean }) =>
@@ -32,6 +53,7 @@ function TeamPage() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["team"] }); toast.success("Updated"); },
     onError: (e: any) => toast.error(e.message),
   });
+
 
   if (error) return <div className="p-6 text-sm text-destructive">{(error as any).message}</div>;
 
