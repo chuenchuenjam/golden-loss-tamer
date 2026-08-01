@@ -20,10 +20,10 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/_authenticated/templates/")({
   head: () => ({
     meta: [
-      { title: "Templates — Loss Run Extractor" },
-      { name: "description", content: "Manage extraction templates for each line of business." },
-      { property: "og:title", content: "Templates — Loss Run Extractor" },
-      { property: "og:description", content: "Manage extraction templates for each line of business." },
+      { title: "Agents — Loss Run Extractor" },
+      { name: "description", content: "Manage extraction agents for each line of business." },
+      { property: "og:title", content: "Agents — Loss Run Extractor" },
+      { property: "og:description", content: "Manage extraction agents for each line of business." },
     ],
   }),
   component: TemplatesPage,
@@ -70,7 +70,7 @@ function TemplatesPage() {
     mutationFn: (id: string) => copy({ data: { id } }),
     onSuccess: (row: any) => {
       qc.invalidateQueries({ queryKey: ["templates"] });
-      toast.success("Copied as a custom template");
+      toast.success("Copied as a custom agent");
       navigate({ to: "/templates/$id", params: { id: row.id } });
     },
     onError: (e: any) => toast.error(e.message),
@@ -84,7 +84,7 @@ function TemplatesPage() {
   async function submitStep1(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim() || !lobId || !file) {
-      toast.error("Template name, line of business and a sample document are required");
+      toast.error("Agent name, line of business and a sample document are required");
       return;
     }
     setBusy(true);
@@ -140,7 +140,7 @@ function TemplatesPage() {
         },
       });
       qc.invalidateQueries({ queryKey: ["templates"] });
-      toast.success("Template saved");
+      toast.success("Agent saved");
       reset();
     } catch (e: any) {
       toast.error(e.message);
@@ -157,13 +157,13 @@ function TemplatesPage() {
   return (
     <div className="p-6 max-w-4xl space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Templates</h1>
-        <p className="text-sm text-muted-foreground">Build a template from a real loss run in three steps: upload, pick the page, review the extracted values.</p>
+        <h1 className="text-2xl font-semibold">Agents</h1>
+        <p className="text-sm text-muted-foreground">Train an agent on a real loss run in three steps: upload, pick the page, review the extracted values.</p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Create template</CardTitle>
+          <CardTitle>Create agent</CardTitle>
           <div className="flex flex-wrap gap-2 pt-2">
             {STEPS.map((s, i) => (
               <div key={s} className={`flex items-center gap-2 rounded-full border px-3 py-1 text-xs ${step === i + 1 ? "border-primary bg-primary/10 text-foreground" : "text-muted-foreground"}`}>
@@ -177,8 +177,8 @@ function TemplatesPage() {
             <form className="space-y-3" onSubmit={submitStep1}>
               <div className="grid gap-2 sm:grid-cols-2">
                 <div>
-                  <Label>Template name</Label>
-                  <Input placeholder="e.g. Travelers WC loss run" value={name} onChange={(e) => setName(e.target.value)} />
+                  <Label>Agent name</Label>
+                  <Input placeholder="e.g. Travelers WC loss run agent" value={name} onChange={(e) => setName(e.target.value)} />
                 </div>
                 <div>
                   <Label>Line of business</Label>
@@ -234,7 +234,7 @@ function TemplatesPage() {
           {step === 3 && (
             <div className="space-y-3">
               <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm">Extracted from: <span className="font-medium">{page}</span> of {file?.name}</div>
-              <p className="text-sm text-muted-foreground">Check each detected field against your document. Override any value the AI got wrong, then confirm to save this as a template.</p>
+              <p className="text-sm text-muted-foreground">Check each detected field against your document. Override any value the AI got wrong, then confirm to save this as an agent.</p>
 
               <div className="grid grid-cols-12 gap-2 px-2 text-xs font-medium text-muted-foreground">
                 <div className="col-span-3">Keyword (key)</div>
@@ -262,7 +262,7 @@ function TemplatesPage() {
                 <Plus className="h-4 w-4 mr-1" /> Add field
               </Button>
               <div className="flex gap-2">
-                <Button onClick={confirm} disabled={busy}>{busy ? "Saving…" : "Confirm & save template"}</Button>
+                <Button onClick={confirm} disabled={busy}>{busy ? "Saving…" : "Confirm & save agent"}</Button>
                 <Button variant="outline" onClick={() => setStep(2)} disabled={busy}>Back</Button>
                 <Button variant="ghost" onClick={reset} disabled={busy}>Cancel</Button>
               </div>
@@ -272,7 +272,7 @@ function TemplatesPage() {
       </Card>
 
       <Card>
-        <CardHeader><CardTitle>All templates</CardTitle></CardHeader>
+        <CardHeader><CardTitle>All agents</CardTitle></CardHeader>
         <CardContent className="space-y-1">
           {(templates.data as any[] | undefined)?.map((t) => (
             <div key={t.id} className="flex items-center justify-between border rounded-md px-3 py-2">

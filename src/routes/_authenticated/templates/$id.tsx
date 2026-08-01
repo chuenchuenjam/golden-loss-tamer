@@ -14,10 +14,10 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/_authenticated/templates/$id")({
   head: () => ({
     meta: [
-      { title: "Edit template — Loss Run Extractor" },
-      { name: "description", content: "Configure fields for this extraction template." },
-      { property: "og:title", content: "Edit template — Loss Run Extractor" },
-      { property: "og:description", content: "Configure fields for this extraction template." },
+      { title: "Edit agent — Loss Run Extractor" },
+      { name: "description", content: "Configure the fields this extraction agent pulls from loss runs." },
+      { property: "og:title", content: "Edit agent — Loss Run Extractor" },
+      { property: "og:description", content: "Configure the fields this extraction agent pulls from loss runs." },
     ],
   }),
   component: EditTemplate,
@@ -54,7 +54,7 @@ function EditTemplate() {
     mutationFn: () => copy({ data: { id } }),
     onSuccess: (row: any) => {
       qc.invalidateQueries({ queryKey: ["templates"] });
-      toast.success("Copied as a custom template");
+      toast.success("Copied as a custom agent");
       navigate({ to: "/templates/$id", params: { id: row.id } });
     },
     onError: (e: any) => toast.error(e.message),
@@ -72,7 +72,7 @@ function EditTemplate() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2">
-            Template
+            Agent
             {isSystem && <Badge variant="secondary">System — read only</Badge>}
           </CardTitle>
           {isSystem && (
