@@ -1,34 +1,24 @@
 ## Goal
 
-In Step 2 of the template wizard ("Choose page"), show the uploaded document next to the page list, and jump the preview to whichever page the user selects — so they can visually confirm the data location before extracting.
+Rebrand "Template" to "Agent" across everything users see, so the extraction setups read like configurable AI agents rather than static forms.
 
-## Layout
+## Wording changes
 
-```text
-+---------------------------+------------------------------+
-| Pages / sheets            |  Document preview             |
-| [x] Page 3  (AI pick)     |  renders the SELECTED page    |
-| [ ] Page 4                |  PDF -> scrolls to that page  |
-| [ ] Page 5                |  Excel -> that sheet as table |
-| reason: "..."             |                               |
-| [Extract this page]       |                               |
-+---------------------------+------------------------------+
-```
+- Sidebar: "Templates" -> "Agents"
+- Templates page: title "Agents", intro copy reframed as "Build an agent from a real loss run in three steps"
+- Create card: "Create template" -> "Create agent", "Template name" -> "Agent name", list heading "All templates" -> "All agents"
+- Wizard: step 3 confirm button "Confirm & save agent"; toasts ("Agent saved", "Copied as a custom agent")
+- Edit page: "Template" -> "Agent", "System — read only" stays, "Copy & edit as custom" kept, save/copy toasts updated
+- New extraction page: template picker labelled "Agent", helper text updated
+- Dashboard: any "Template" column/label -> "Agent"; landing page copy ("Golden source templates" -> "Golden source agents")
+- Excel export header row label "Template" -> "Agent"
 
-Two-column grid on desktop (list ~1/3, preview ~2/3); stacked on mobile with the preview under the list.
+Labels System / Custom / Carrier stay as they are.
 
-## Behaviour
+## Not changing
 
-- The file the user picked in Step 1 is already in the browser, so the preview is built from a local object URL — no extra download, no cost.
-- PDF: embed in an iframe using the browser's built-in viewer and the `#page=N` fragment. Clicking a different page re-points the viewer to that page. Add a small "Open in new tab" link as a fallback for browsers that block the inline viewer.
-- Excel/CSV: parse the workbook client-side and render the selected sheet as a scrollable HTML table (first ~50 rows), with a row/column count caption so the user can see the claim table structure.
-- Other/unsupported types: show a plain notice instead of a broken frame.
-- The AI's recommended page is highlighted as "AI suggestion" and is what the preview opens on.
-- Step 3 also gets a compact reminder line ("Extracted from: <page>") so the reviewed values stay tied to their source location.
+Database tables, columns (`templates`, `template_id`), server function names, storage bucket names, and route paths (`/templates`) stay the same — renaming those would require a migration and add risk with no user-visible benefit. Only display text changes.
 
 ## Technical notes
 
-- Changes are confined to `src/routes/_authenticated/templates/index.tsx` plus a new small `src/components/DocumentPreview.tsx`.
-- `xlsx` is already installed and is browser-safe, so the sheet preview uses it directly in the component; no server function or storage signed-URL work is needed.
-- Page identifiers coming back from the analyzer (e.g. `Page 3`, or a sheet name) are mapped to either a PDF page number or a sheet key inside the preview component.
-- No schema, backend, or extraction-logic changes.
+Edits confined to: `src/routes/_authenticated/route.tsx`, `src/routes/_authenticated/templates/index.tsx`, `src/routes/_authenticated/templates/$id.tsx`, `src/routes/_authenticated/upload.tsx`, `src/routes/_authenticated/dashboard.tsx`, `src/routes/index.tsx`, and the sheet label in `src/lib/export.functions.ts`. Route `head()` titles/descriptions updated to match the new naming.
