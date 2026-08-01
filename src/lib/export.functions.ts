@@ -49,7 +49,7 @@ export const exportJobToExcel = createServerFn({ method: "POST" })
       ["Job Name", job.name],
       ["Client", (job.clients as any)?.name ?? ""],
       ["Line of Business", (job.lines_of_business as any)?.name ?? ""],
-      ["Template", (job.templates as any)?.name ?? ""],
+      ["Agent", (job.templates as any)?.name ?? ""],
       ["Status", job.status],
       ["Created", job.created_at],
       ["Completed", job.completed_at ?? ""],

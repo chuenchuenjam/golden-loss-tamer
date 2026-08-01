@@ -107,8 +107,8 @@ function Dashboard() {
         </CardHeader>
         <CardContent className="text-sm space-y-2">
           <ol className="list-decimal ml-5 space-y-1">
-            <li><b>Pick or create a template</b> per line of business. Mark your firm's preferred one as the <em>golden source</em> so every extraction uses the same field schema.</li>
-            <li><b>Upload the carrier's loss run</b> (PDF, XLSX, CSV) under the correct client. The AI extracts every claim into the template's fields.</li>
+            <li><b>Pick or create an agent</b> per line of business. Mark your firm's preferred one as the <em>golden source</em> so every extraction uses the same field schema.</li>
+            <li><b>Upload the carrier's loss run</b> (PDF, XLSX, CSV) under the correct client. The AI extracts every claim into the agent's fields.</li>
             <li><b>Review data quality flags</b> — missing dates, negative reserves, duplicate claim numbers, adverse development. Fix or accept before pricing.</li>
             <li><b>Select rows and fields</b> that matter for your analysis, then <b>export to Excel</b> for triangle building, frequency/severity, and reserve adequacy.</li>
           </ol>
@@ -126,7 +126,7 @@ function Dashboard() {
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <QuickAction to="/templates" icon={FileStack} title="Templates" desc="Manage extraction schemas per line of business." />
+        <QuickAction to="/templates" icon={FileStack} title="Agents" desc="Manage extraction agents per line of business." />
       </div>
 
       <Card>
@@ -137,7 +137,7 @@ function Dashboard() {
               <Search className="h-4 w-4 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input
                 className="pl-8"
-                placeholder="Search carrier, job, line of business, template…"
+                placeholder="Search carrier, job, line of business, agent…"
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
               />
@@ -158,7 +158,7 @@ function Dashboard() {
                 <TableHead>Job</TableHead>
                 <TableHead>Carrier</TableHead>
                 <TableHead>LoB</TableHead>
-                <TableHead>Template</TableHead>
+                <TableHead>Agent</TableHead>
                 <TableHead>Files</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Created</TableHead>
