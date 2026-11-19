@@ -21,7 +21,7 @@ export const Route = createFileRoute("/")({
 function Landing() {
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSignedIn(!!data.session));
+    supabase.auth.getUser().then(({ data, error }) => setSignedIn(!error && !!data.user));
   }, []);
 
   return (
