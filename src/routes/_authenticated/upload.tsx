@@ -49,14 +49,14 @@ function UploadPage() {
   const [progress, setProgress] = useState<string>("");
 
   const filteredTemplates = useMemo(
-    () => ((templates.data as any[]) ?? []).filter((t) => !lobId || t.lob_id === lobId),
+    () => ((templates.data as any[]) ?? []).filter((t) => !lobId || t.lob_id === lobId || t.is_baseline),
     [templates.data, lobId],
   );
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!carrier.trim() || !templateId || !lobId || files.length === 0) {
-      toast.error("Carrier name, line of business, agent and at least one file are required");
+      toast.error("Carrier name, line of business, AI model and at least one file are required");
       return;
     }
     setBusy(true);
@@ -103,12 +103,12 @@ function UploadPage() {
     <div className="p-6 max-w-3xl space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">New extraction</h1>
-        <p className="text-sm text-muted-foreground">Upload PDF, XLSX or CSV loss runs; AI extracts fields per agent.</p>
+        <p className="text-sm text-muted-foreground">Upload PDF, XLSX or CSV loss runs; AI extracts fields per AI model.</p>
       </div>
       <Card className="border-primary/20 bg-primary/5">
         <CardContent className="pt-4 text-sm space-y-1">
           <div className="font-medium">Underwriter tip</div>
-          <p className="text-muted-foreground">Pick the <b>golden agent</b> for the line of business so extraction produces a consistent schema you can compare across submissions. Attach all valuation periods you have — reconciliation compares them for adverse development.</p>
+          <p className="text-muted-foreground">Pick the <b>right AI model</b> for the line of business so extraction produces a consistent schema you can compare across submissions. Attach all valuation periods you have — reconciliation compares them for adverse development.</p>
         </CardContent>
       </Card>
       <Card>
@@ -141,9 +141,9 @@ function UploadPage() {
               </div>
             </div>
             <div>
-              <Label>Agent</Label>
+              <Label>AI model</Label>
               <Select value={templateId} onValueChange={setTemplateId}>
-                <SelectTrigger><SelectValue placeholder={lobId ? "Select agent" : "Pick LoB first"} /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={lobId ? "Select AI model" : "Pick LoB first"} /></SelectTrigger>
                 <SelectContent>
                   {filteredTemplates.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
                 </SelectContent>

@@ -15,6 +15,7 @@ import { ArrowLeft, Download, RefreshCw, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { JobSummary } from "@/components/JobSummary";
+import { ExcessKpiCards, UWSummary } from "@/components/ExcessSummary";
 
 export const Route = createFileRoute("/_authenticated/jobs/$id")({
   head: () => ({
@@ -80,6 +81,7 @@ function JobDetail() {
   if (q.isLoading) return <div className="p-6">Loading...</div>;
   if (!job) return <div className="p-6">Not found</div>;
 
+  const isExcess = job.lines_of_business?.slug === "construction-excess-casualty";
   const included = rows.filter((r) => r.included_in_export).length;
 
   return (
@@ -100,15 +102,18 @@ function JobDetail() {
         </div>
       </div>
 
-      <JobSummary rows={rows} issues={issues} />
+      {isExcess ? <ExcessKpiCards rows={rows} /> : <JobSummary rows={rows} issues={issues} />}
 
-      <Tabs defaultValue="rows">
+      <Tabs defaultValue={isExcess ? "uw" : "rows"}>
         <TabsList>
+          {isExcess && <TabsTrigger value="uw">UW summary</TabsTrigger>}
           <TabsTrigger value="rows">Rows ({rows.length})</TabsTrigger>
           <TabsTrigger value="quality">Data quality ({issues.length})</TabsTrigger>
           <TabsTrigger value="fields">Export fields</TabsTrigger>
           <TabsTrigger value="files">Source files</TabsTrigger>
         </TabsList>
+
+        {isExcess && <TabsContent value="uw"><UWSummary rows={rows} /></TabsContent>}
 
         <TabsContent value="rows">
           <Card>

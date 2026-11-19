@@ -50,9 +50,9 @@ function Landing() {
         </div>
 
         <div className="mt-16 grid gap-6 sm:grid-cols-3">
-          <Feature icon={Zap} title="AI-native extraction" desc="Upload PDFs, spreadsheets, or CSVs — an agent drives what to pull." />
+          <Feature icon={Zap} title="AI-native extraction" desc="Upload PDFs, spreadsheets, or CSVs — an AI model drives what to pull." />
           <Feature icon={ShieldCheck} title="Reconciliation & quality flags" desc="Missing fields, negative reserves, regressions across periods." />
-          <Feature icon={FileStack} title="Golden source agents" desc="Curate the fields your teams trust, then export the exact columns you need." />
+          <Feature icon={FileStack} title="Golden source AI models" desc="Curate the fields your teams trust, then export the exact columns you need." />
         </div>
       </main>
     </div>

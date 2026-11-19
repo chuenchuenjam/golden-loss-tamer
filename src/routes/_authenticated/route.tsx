@@ -43,7 +43,7 @@ function AuthLayout() {
   const nav = [
     { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { to: "/upload", label: "New extraction", icon: Upload },
-    { to: "/templates", label: "Agents", icon: FileStack },
+    { to: "/templates", label: "AI models", icon: FileStack },
   ] as const;
   const adminNav = [
     { to: "/admin/team", label: "Team", icon: Users },

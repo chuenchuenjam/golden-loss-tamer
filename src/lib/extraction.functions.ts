@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
+import { reconcileRow } from "./excess-recon";
 import { generateText, Output, NoObjectGeneratedError } from "ai";
 import { createLovableAiGateway } from "./ai-gateway.server";
 import { spreadsheetToText } from "./file-parse.server";
@@ -192,8 +193,14 @@ export const reconcileJob = createServerFn({ method: "POST" })
     }> = [];
 
     const byClaim = new Map<string, any[]>();
+    const isExcess = fields.some((f) => f.key === "incurred_indemnity") && fields.some((f) => f.key === "record_type");
     for (const r of rows ?? []) {
       const d: any = r.data ?? {};
+      if (isExcess) {
+        for (const msg of reconcileRow(d).issues) {
+          issues.push({ job_id: data.job_id, row_id: r.id, severity: "error", code: "RECON_MISMATCH", field: null, message: msg });
+        }
+      }
       // Required fields present
       for (const k of requiredKeys) {
         if (d[k] === null || d[k] === undefined || d[k] === "") {

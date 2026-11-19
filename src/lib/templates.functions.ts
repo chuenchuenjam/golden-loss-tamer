@@ -18,6 +18,7 @@ export const listLobs = createServerFn({ method: "GET" })
     const { data, error } = await context.supabase
       .from("lines_of_business")
       .select("*")
+      .eq("active", true)
       .order("name");
     if (error) throw new Error(error.message);
     return data;
@@ -28,10 +29,10 @@ export const listTemplates = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("templates")
-      .select("*, lines_of_business(name, slug)")
+      .select("*, lines_of_business(name, slug, active)")
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
-    return data;
+    return (data ?? []).filter((t: any) => t.is_baseline || t.lines_of_business?.active);
   });
 
 export const getTemplate = createServerFn({ method: "GET" })
