@@ -62,8 +62,8 @@ function AuthLayout() {
 
   return (
     <div className="min-h-screen flex bg-muted/30">
-      <aside className="w-60 shrink-0 border-r bg-background flex flex-col">
-        <div className="p-4 border-b">
+      <aside className="w-14 md:w-60 shrink-0 border-r bg-background flex flex-col">
+        <div className="p-4 border-b hidden md:block">
           <div className="font-semibold text-sm">Loss Run Extractor</div>
           <div className="text-xs text-muted-foreground truncate">{user.email}</div>
         </div>
@@ -77,12 +77,12 @@ function AuthLayout() {
                 pathname.startsWith(n.to) && "bg-accent font-medium",
               )}
             >
-              <n.icon className="h-4 w-4" /> {n.label}
+              <n.icon className="h-4 w-4 shrink-0" /> <span className="hidden md:inline">{n.label}</span>
             </Link>
           ))}
           {isAdmin && (
             <>
-              <div className="mt-4 mb-1 px-3 text-xs uppercase text-muted-foreground">Admin</div>
+              <div className="mt-4 mb-1 px-3 hidden md:block text-xs uppercase text-muted-foreground">Admin</div>
               {adminNav.map((n) => (
                 <Link
                   key={n.to}
@@ -92,7 +92,7 @@ function AuthLayout() {
                     pathname.startsWith(n.to) && "bg-accent font-medium",
                   )}
                 >
-                  <n.icon className="h-4 w-4" /> {n.label}
+                  <n.icon className="h-4 w-4 shrink-0" /> <span className="hidden md:inline">{n.label}</span>
                 </Link>
               ))}
             </>
@@ -100,7 +100,7 @@ function AuthLayout() {
         </nav>
         <div className="p-2 border-t">
           <Button variant="ghost" size="sm" className="w-full justify-start" onClick={signOut}>
-            <LogOut className="h-4 w-4 mr-2" /> Sign out
+            <LogOut className="h-4 w-4 md:mr-2" /> <span className="hidden md:inline">Sign out</span>
           </Button>
         </div>
       </aside>
