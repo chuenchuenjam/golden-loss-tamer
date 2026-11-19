@@ -17,8 +17,9 @@ export const Route = createFileRoute("/auth")({
     ],
   }),
   beforeLoad: async () => {
-    const { data } = await supabase.auth.getSession();
-    if (data.session) throw redirect({ to: "/dashboard" });
+    // Must use the same check as the protected layout, or a stale local session loops between the two.
+    const { data, error } = await supabase.auth.getUser();
+    if (!error && data.user) throw redirect({ to: "/dashboard" });
   },
   ssr: false,
   component: AuthPage,
