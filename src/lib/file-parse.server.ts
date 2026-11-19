@@ -9,7 +9,7 @@ export function spreadsheetToText(buffer: ArrayBuffer, filename: string): string
   const out: string[] = [`# File: ${filename}`];
   for (const name of wb.SheetNames) {
     const ws = wb.Sheets[name];
-    const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: "" });
+    const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: "", raw: false });
     out.push(`\n## Sheet: ${name} (${rows.length} rows)`);
     const preview = rows.slice(0, 500);
     out.push(JSON.stringify(preview));
@@ -28,7 +28,7 @@ export function sheetNames(buffer: ArrayBuffer): string[] {
 export function sheetToText(buffer: ArrayBuffer, sheet: string, limit = 200): string {
   const wb = XLSX.read(new Uint8Array(buffer), { type: "array" });
   const name = wb.SheetNames.includes(sheet) ? sheet : wb.SheetNames[0];
-  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets[name], { defval: "" });
+  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets[name], { defval: "", raw: false });
   const preview = rows.slice(0, limit);
   return `## Sheet: ${name} (${rows.length} rows)\n${JSON.stringify(preview)}`;
 }
