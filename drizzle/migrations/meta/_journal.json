@@ -8,6 +8,13 @@
       "when": 1795107430363,
       "tag": "0000_construction_lobs_ai_models",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1795107941322,
+      "tag": "0001_profile_lob_and_lob_read_scope",
+      "breakpoints": true
     }
   ]
 }

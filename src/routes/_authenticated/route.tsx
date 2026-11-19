@@ -31,11 +31,17 @@ function AuthLayout() {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [isAdmin, setIsAdmin] = useState(false);
+  const [adminChecked, setAdminChecked] = useState(false);
+
+  useEffect(() => {
+    if (adminChecked && !isAdmin && pathname.startsWith("/templates")) navigate({ to: "/dashboard", replace: true });
+  }, [adminChecked, isAdmin, pathname]);
 
   useEffect(() => {
     (async () => {
       const { data } = await supabase.rpc("has_role", { _user_id: user.id, _role: "admin" });
       setIsAdmin(!!data);
+      setAdminChecked(true);
     })();
   }, [user.id]);
 
@@ -47,9 +53,9 @@ function AuthLayout() {
   const nav = [
     { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { to: "/upload", label: "New extraction", icon: Upload },
-    { to: "/templates", label: "AI models", icon: FileStack },
   ] as const;
   const adminNav = [
+    { to: "/templates", label: "AI models", icon: FileStack },
     { to: "/admin/team", label: "Team", icon: Users },
   ] as const;
 

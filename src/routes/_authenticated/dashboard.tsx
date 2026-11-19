@@ -125,9 +125,9 @@ function Dashboard() {
         <StatCard label="Errors" value={String(byStatus.error ?? 0)} />
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      {isAdmin && <div className="grid gap-3 sm:grid-cols-2">
         <QuickAction to="/templates" icon={FileStack} title="AI models" desc="Manage extraction AI models per line of business." />
-      </div>
+      </div>}
 
       <Card>
         <CardHeader className="gap-3">

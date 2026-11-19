@@ -14,7 +14,7 @@ export const listUsersWithRoles = createServerFn({ method: "GET" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: profiles, error } = await supabaseAdmin
       .from("profiles")
-      .select("user_id, email, display_name, created_at")
+      .select("user_id, email, display_name, created_at, lob_id")
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
     const { data: roles } = await supabaseAdmin.from("user_roles").select("user_id, role");
@@ -24,7 +24,20 @@ export const listUsersWithRoles = createServerFn({ method: "GET" })
       arr.push(r.role);
       byUser.set(r.user_id, arr);
     });
-    return (profiles ?? []).map((p: any) => ({ ...p, roles: byUser.get(p.user_id) ?? [] }));
+    const { data: lobs } = await supabaseAdmin.from("lines_of_business").select("id, name, active");
+    const { data: tpls } = await supabaseAdmin.from("templates").select("id, name, lob_id, is_baseline, owner_user_id");
+    const { data: access } = await supabaseAdmin.from("user_template_access").select("user_id, template_id");
+    const lobName = new Map((lobs ?? []).map((l: any) => [l.id, l.name]));
+    return (profiles ?? []).map((p: any) => {
+      const r = byUser.get(p.user_id) ?? [];
+      const granted = new Set((access ?? []).filter((a: any) => a.user_id === p.user_id).map((a: any) => a.template_id));
+      const models = r.includes("admin")
+        ? ["All AI models"]
+        : (tpls ?? [])
+            .filter((t: any) => t.is_baseline || (p.lob_id && t.lob_id === p.lob_id) || t.owner_user_id === p.user_id || granted.has(t.id))
+            .map((t: any) => t.name);
+      return { ...p, roles: r, lob_name: p.lob_id ? lobName.get(p.lob_id) ?? null : null, models };
+    });
   });
 
 export const setUserRole = createServerFn({ method: "POST" })
@@ -86,3 +99,16 @@ export const addTeamMember = createServerFn({ method: "POST" })
     return { ok: true, user_id: uid };
   });
 
+
+export const setUserLob = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ user_id: z.string().uuid(), lob_id: z.string().uuid().nullable() }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await ensureAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.from("profiles").update({ lob_id: data.lob_id }).eq("user_id", data.user_id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });

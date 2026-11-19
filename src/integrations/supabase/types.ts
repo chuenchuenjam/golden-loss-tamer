@@ -214,21 +214,32 @@ export type Database = {
           created_at: string
           display_name: string | null
           email: string | null
+          lob_id: string | null
           user_id: string
         }
         Insert: {
           created_at?: string
           display_name?: string | null
           email?: string | null
+          lob_id?: string | null
           user_id: string
         }
         Update: {
           created_at?: string
           display_name?: string | null
           email?: string | null
+          lob_id?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_lob_id_fkey"
+            columns: ["lob_id"]
+            isOneToOne: false
+            referencedRelation: "lines_of_business"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       templates: {
         Row: {

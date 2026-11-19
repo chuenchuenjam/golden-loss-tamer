@@ -2,7 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { listUsersWithRoles, setUserRole, addTeamMember } from "@/lib/admin.functions";
+import { listUsersWithRoles, setUserRole, addTeamMember, setUserLob }
+import { listLobs } from "@/lib/templates.functions";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; from "@/lib/admin.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
@@ -30,6 +32,14 @@ function TeamPage() {
   const roleFn = useServerFn(setUserRole);
   const addFn = useServerFn(addTeamMember);
   const qc = useQueryClient();
+  const lobFn = useServerFn(setUserLob);
+  const lobsFn = useServerFn(listLobs);
+  const { data: lobs = [] } = useQuery({ queryKey: ["lobs"], queryFn: () => lobsFn() });
+  const lm = useMutation({
+    mutationFn: (p: { user_id: string; lob_id: string | null }) => lobFn({ data: p }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["team"] }); toast.success("Line of business updated"); },
+    onError: (e: any) => toast.error(e.message),
+  });
   const { data = [], error } = useQuery({ queryKey: ["team"], queryFn: () => listFn(), retry: false });
 
   const [email, setEmail] = useState("");
@@ -94,13 +104,30 @@ function TeamPage() {
         <CardContent>
           <Table>
             <TableHeader><TableRow>
-              <TableHead>Email</TableHead><TableHead>Name</TableHead><TableHead>Roles</TableHead><TableHead className="w-32">Admin</TableHead>
+              <TableHead>Email</TableHead><TableHead>Name</TableHead><TableHead>Line of business</TableHead><TableHead>AI models access</TableHead><TableHead>Roles</TableHead><TableHead className="w-32">Admin</TableHead>
             </TableRow></TableHeader>
             <TableBody>
               {(data as any[]).map((u) => (
                 <TableRow key={u.user_id}>
                   <TableCell className="text-sm">{u.email}</TableCell>
                   <TableCell className="text-sm">{u.display_name ?? "—"}</TableCell>
+                  <TableCell className="min-w-48">
+                    <Select
+                      value={u.lob_id ?? "none"}
+                      onValueChange={(v) => lm.mutate({ user_id: u.user_id, lob_id: v === "none" ? null : v })}
+                    >
+                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Not assigned</SelectItem>
+                        {(lobs as any[]).map((l) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell className="max-w-64">
+                    <div className="flex flex-wrap gap-1">
+                      {u.models.map((n: string) => <Badge key={n} variant="outline" className="text-xs font-normal">{n}</Badge>)}
+                    </div>
+                  </TableCell>
                   <TableCell>{u.roles.map((r: string) => <Badge key={r} variant="secondary" className="mr-1">{r}</Badge>)}</TableCell>
                   <TableCell>
                     <Switch
