@@ -99,8 +99,8 @@ function JobDetail() {
 
   return (
     <div className="p-6 max-w-none space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-2">
           <Link to="/dashboard"><Button variant="ghost" size="sm"><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button></Link>
           <div>
             <h1 className="text-xl font-semibold">{job.name}</h1>
@@ -118,7 +118,7 @@ function JobDetail() {
       {isExcess ? <ExcessKpiCards rows={rows} /> : <JobSummary rows={rows} issues={issues} />}
 
       <Tabs defaultValue={hasUw ? "uw" : "rows"}>
-        <TabsList>
+        <TabsList className="max-w-full justify-start overflow-x-auto">
           {hasUw && <TabsTrigger value="uw">UW summary</TabsTrigger>}
           <TabsTrigger value="rows">Rows ({rows.length})</TabsTrigger>
           <TabsTrigger value="quality">Data quality ({issues.length})</TabsTrigger>
@@ -230,8 +230,8 @@ function JobDetail() {
           <Card>
             <CardContent className="space-y-1 pt-4">
               {((job.source_files as any[]) ?? []).map((f, i) => (
-                <div key={i} className="border rounded-md px-3 py-2 text-sm flex justify-between">
-                  <span>{f.name}</span><span className="text-muted-foreground">{(f.size / 1024).toFixed(0)} KB</span>
+                <div key={i} className="flex flex-col gap-1 rounded-md border px-3 py-2 text-sm sm:flex-row sm:justify-between">
+                  <span className="min-w-0 break-all">{f.name}</span><span className="shrink-0 text-muted-foreground">{(f.size / 1024).toFixed(0)} KB</span>
                 </div>
               ))}
             </CardContent>
