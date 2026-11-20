@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { reconcileRow } from "./excess-recon";
+import { reconcilePrimaryRow } from "./primary-recon";
 import { generateText, Output, NoObjectGeneratedError } from "ai";
 import { createLovableAiGateway } from "./ai-gateway.server";
 import { spreadsheetToText } from "./file-parse.server";
@@ -194,8 +195,14 @@ export const reconcileJob = createServerFn({ method: "POST" })
 
     const byClaim = new Map<string, any[]>();
     const isExcess = fields.some((f) => f.key === "incurred_indemnity") && fields.some((f) => f.key === "record_type");
+    const isPrimary = fields.some((f) => f.key === "paid_alae") && fields.some((f) => f.key === "loss_reserve");
     for (const r of rows ?? []) {
       const d: any = r.data ?? {};
+      if (isPrimary) {
+        for (const msg of reconcilePrimaryRow(d).issues) {
+          issues.push({ job_id: data.job_id, row_id: r.id, severity: "error", code: "RECON_MISMATCH", field: "total_incurred", message: msg });
+        }
+      }
       if (isExcess) {
         for (const msg of reconcileRow(d).issues) {
           issues.push({ job_id: data.job_id, row_id: r.id, severity: "error", code: "RECON_MISMATCH", field: null, message: msg });

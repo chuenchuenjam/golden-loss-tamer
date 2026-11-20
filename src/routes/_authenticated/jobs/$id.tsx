@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { JobSummary } from "@/components/JobSummary";
 import { ExcessKpiCards, UWSummary } from "@/components/ExcessSummary";
+import { PrimarySummary } from "@/components/PrimarySummary";
 
 export const Route = createFileRoute("/_authenticated/jobs/$id")({
   head: () => ({
@@ -68,6 +69,16 @@ function JobDetail() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["job", id] }); toast.success("Re-reconciled"); },
   });
 
+  const editCell = useMutation({
+    mutationFn: async (p: { row: any; key: string; value: string }) => {
+      const next = { ...(p.row.data ?? {}), [p.key]: p.value === "" ? null : p.value };
+      await updRow({ data: { id: p.row.id, data: next } });
+      await recFn({ data: { job_id: id } });
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["job", id] }); toast.success("Saved and re-reconciled"); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   async function exportExcel() {
     setDownloading(true);
     try {
@@ -82,6 +93,8 @@ function JobDetail() {
   if (!job) return <div className="p-6">Not found</div>;
 
   const isExcess = job.lines_of_business?.slug === "construction-excess-casualty";
+  const isPrimary = job.lines_of_business?.slug === "construction-primary-casualty";
+  const hasUw = isExcess || isPrimary;
   const included = rows.filter((r) => r.included_in_export).length;
 
   return (
@@ -104,16 +117,16 @@ function JobDetail() {
 
       {isExcess ? <ExcessKpiCards rows={rows} /> : <JobSummary rows={rows} issues={issues} />}
 
-      <Tabs defaultValue={isExcess ? "uw" : "rows"}>
+      <Tabs defaultValue={hasUw ? "uw" : "rows"}>
         <TabsList>
-          {isExcess && <TabsTrigger value="uw">UW summary</TabsTrigger>}
+          {hasUw && <TabsTrigger value="uw">UW summary</TabsTrigger>}
           <TabsTrigger value="rows">Rows ({rows.length})</TabsTrigger>
           <TabsTrigger value="quality">Data quality ({issues.length})</TabsTrigger>
           <TabsTrigger value="fields">Export fields</TabsTrigger>
           <TabsTrigger value="files">Source files</TabsTrigger>
         </TabsList>
 
-        {isExcess && <TabsContent value="uw"><UWSummary rows={rows} /></TabsContent>}
+        {hasUw && <TabsContent value="uw">{isExcess ? <UWSummary rows={rows} /> : <PrimarySummary rows={rows} />}</TabsContent>}
 
         <TabsContent value="rows">
           <Card>
@@ -144,8 +157,19 @@ function JobDetail() {
                           const bad = rowIssues.some((i) => i.field === f.key);
                           const v = r.data?.[f.key];
                           return (
-                            <TableCell key={f.key} className={cn("text-sm", bad && "text-destructive font-medium")}>
-                              {v === null || v === undefined || v === "" ? <span className="text-muted-foreground">—</span> : String(v)}
+                            <TableCell key={f.key} className="p-1">
+                              <input
+                                key={`${r.id}-${f.key}-${String(v ?? "")}`}
+                                defaultValue={v === null || v === undefined ? "" : String(v)}
+                                placeholder="—"
+                                aria-label={f.label}
+                                className={cn("w-full min-w-24 bg-transparent rounded px-1 py-0.5 text-sm border border-transparent hover:border-input focus:border-ring focus:outline-none", bad && "text-destructive font-medium")}
+                                onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                                onBlur={(e) => {
+                                  const nv = e.target.value.trim();
+                                  if (nv !== (v === null || v === undefined ? "" : String(v))) editCell.mutate({ row: r, key: f.key, value: nv });
+                                }}
+                              />
                             </TableCell>
                           );
                         })}
