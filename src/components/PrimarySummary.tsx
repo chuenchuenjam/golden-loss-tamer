@@ -5,6 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { num } from "@/lib/excess-recon";
 import { PRIMARY_LINES, primaryLineOf, isLargeLoss, reconcilePrimaryRow, type PrimaryLine } from "@/lib/primary-recon";
 import { cn } from "@/lib/utils";
+import { useState } from "react";
+import { LargeLossThreshold } from "@/components/LargeLossThreshold";
+import { DEFAULT_LARGE_LOSS, passesThreshold } from "@/lib/large-loss";
 
 type Row = { id: string; data: Record<string, unknown> };
 type Col = { key: string; label: string; money?: boolean };
@@ -101,6 +104,7 @@ function Section({ title, rows, cols, yellow }: { title: string; rows: Row[]; co
 }
 
 export function PrimarySummary({ rows }: { rows: Row[] }) {
+  const [threshold, setThreshold] = useState(DEFAULT_LARGE_LOSS);
   const byLine = new Map<PrimaryLine, Row[]>();
   for (const r of rows) {
     const l = primaryLineOf(r.data?.["coverage_line"]);
@@ -113,6 +117,7 @@ export function PrimarySummary({ rows }: { rows: Row[] }) {
         One tab per product line, laid out like the PLUMB loss run format. <span className="px-1 bg-highlight text-highlight-foreground rounded">Highlighted</span> columns are the fields to paste into PLUMB.
         Each row checks Total Incurred = Paid Loss + Loss Reserve + Paid ALAE + ALAE Reserve and Total Paid = Paid Loss + Paid ALAE. Fix values in the Rows tab.
       </p>
+      <LargeLossThreshold value={threshold} onChange={setThreshold} />
       <Tabs defaultValue="GL">
         <TabsList>
           {PRIMARY_LINES.map((l) => <TabsTrigger key={l} value={l}>{l} ({byLine.get(l)?.length ?? 0})</TabsTrigger>)}
@@ -122,7 +127,7 @@ export function PrimarySummary({ rows }: { rows: Row[] }) {
           return (
             <TabsContent key={l} value={l} className="space-y-3">
               <Section title={`${l} — Policy years`} rows={all.filter((r) => !isLargeLoss(r.data))} cols={PY_COLS} yellow={YELLOW[l].py} />
-              <Section title={`${l} — Large losses`} rows={all.filter((r) => isLargeLoss(r.data))} cols={LL_COLS} yellow={YELLOW[l].ll} />
+              <Section title={`${l} — Large losses`} rows={all.filter((r) => isLargeLoss(r.data) && passesThreshold(reconcilePrimaryRow(r.data).statedIncurred ?? reconcilePrimaryRow(r.data).totalIncurred, threshold))} cols={LL_COLS} yellow={YELLOW[l].ll} />
             </TabsContent>
           );
         })}

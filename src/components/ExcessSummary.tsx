@@ -3,6 +3,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { excessKpis, reconcileRow, type Num } from "@/lib/excess-recon";
 import { cn } from "@/lib/utils";
+import { useState } from "react";
+import { LargeLossThreshold } from "@/components/LargeLossThreshold";
+import { DEFAULT_LARGE_LOSS, passesThreshold } from "@/lib/large-loss";
 
 const usd = (n: Num | "N/A") =>
   n === "N/A" ? "N/A" : n === null ? "—" : n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
@@ -42,7 +45,10 @@ const COVERAGES = [
 ] as const;
 
 export function UWSummary({ rows }: { rows: Row[] }) {
-  const recs = rows.map((r) => ({ d: r.data ?? {}, r: reconcileRow(r.data ?? {}) }));
+  const [threshold, setThreshold] = useState(DEFAULT_LARGE_LOSS);
+  const recs = rows
+    .map((r) => ({ d: r.data ?? {}, r: reconcileRow(r.data ?? {}) }))
+    .filter((x) => x.r.recordType !== "Large Loss" || passesThreshold(x.r.totalIncurred, threshold));
   const sections = COVERAGES.flatMap(([cov, title]) =>
     (["Policy Year", "Large Loss"] as const).map((type) => ({
       title: type === "Large Loss" ? `Large Losses — ${title}` : title,
@@ -56,6 +62,7 @@ export function UWSummary({ rows }: { rows: Row[] }) {
       <div className="rounded-md border p-2 text-xs text-muted-foreground">
         Reconciled as: Total Incurred = Incurred Indemnity + Incurred Expense · Total Paid = Paid Indemnity + Paid Expense · Total Reserve = Total Incurred − Total Paid · Change in Incurred = Current − Previous (shown only when a prior valuation was supplied). Cells in red don't tie to the loss run.
       </div>
+      <LargeLossThreshold value={threshold} onChange={setThreshold} />
       {sections.length === 0 && <p className="text-sm text-muted-foreground">No policy-year or large-loss rows extracted yet.</p>}
       {sections.map((s) => (
         <Card key={s.title}>
