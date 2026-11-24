@@ -12,6 +12,7 @@ export const Route = createFileRoute("/")({
       { property: "og:title", content: "Loss Run Extractor" },
       { property: "og:description", content: "AI-powered loss run extraction for every line of business." },
       { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   ssr: false,

@@ -1,0 +1,4 @@
+- [x] Make MM the default available model and Construction models visibly pending January release.
+- [x] Add per-user model grants and revocations in Team with server-enforced access.
+- [x] Add admin Golden Source / Edge Case classification and editable reviewed example values.
+- [x] Verify permissions and controls through 19 passing tests and signed-in admin/member checks on desktop and phone.

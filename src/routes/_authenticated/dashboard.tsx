@@ -20,6 +20,8 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
       { name: "description", content: "Your loss run extraction workspace." },
       { property: "og:title", content: "Dashboard — Loss Run Extractor" },
       { property: "og:description", content: "Your loss run extraction workspace." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: Dashboard,

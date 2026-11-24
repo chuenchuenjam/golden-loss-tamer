@@ -142,6 +142,13 @@ export type Database = {
             foreignKeyName: "extraction_jobs_template_id_fkey"
             columns: ["template_id"]
             isOneToOne: false
+            referencedRelation: "model_catalogue"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "extraction_jobs_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
             referencedRelation: "templates"
             referencedColumns: ["id"]
           },
@@ -245,6 +252,7 @@ export type Database = {
         Row: {
           created_at: string
           fields: Json
+          golden_template_id: string | null
           id: string
           is_baseline: boolean
           is_golden: boolean
@@ -254,11 +262,13 @@ export type Database = {
           name: string
           owner_user_id: string | null
           source_file_path: string | null
+          source_kind: string
           updated_at: string
         }
         Insert: {
           created_at?: string
           fields?: Json
+          golden_template_id?: string | null
           id?: string
           is_baseline?: boolean
           is_golden?: boolean
@@ -268,11 +278,13 @@ export type Database = {
           name: string
           owner_user_id?: string | null
           source_file_path?: string | null
+          source_kind?: string
           updated_at?: string
         }
         Update: {
           created_at?: string
           fields?: Json
+          golden_template_id?: string | null
           id?: string
           is_baseline?: boolean
           is_golden?: boolean
@@ -282,9 +294,24 @@ export type Database = {
           name?: string
           owner_user_id?: string | null
           source_file_path?: string | null
+          source_kind?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "templates_golden_template_id_fkey"
+            columns: ["golden_template_id"]
+            isOneToOne: false
+            referencedRelation: "model_catalogue"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "templates_golden_template_id_fkey"
+            columns: ["golden_template_id"]
+            isOneToOne: false
+            referencedRelation: "templates"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "templates_lob_id_fkey"
             columns: ["lob_id"]
@@ -314,21 +341,31 @@ export type Database = {
       }
       user_template_access: {
         Row: {
+          enabled: boolean
           granted_at: string
           template_id: string
           user_id: string
         }
         Insert: {
+          enabled?: boolean
           granted_at?: string
           template_id: string
           user_id: string
         }
         Update: {
+          enabled?: boolean
           granted_at?: string
           template_id?: string
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "user_template_access_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "model_catalogue"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "user_template_access_template_id_fkey"
             columns: ["template_id"]
@@ -340,9 +377,35 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      model_catalogue: {
+        Row: {
+          id: string | null
+          is_baseline: boolean | null
+          is_system: boolean | null
+          label: string | null
+          lob_active: boolean | null
+          lob_id: string | null
+          lob_name: string | null
+          lob_slug: string | null
+          name: string | null
+          source_kind: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "templates_lob_id_fkey"
+            columns: ["lob_id"]
+            isOneToOne: false
+            referencedRelation: "lines_of_business"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
+      can_use_model: {
+        Args: { _lob_id?: string; _template_id: string; _user_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

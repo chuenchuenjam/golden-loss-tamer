@@ -18,6 +18,8 @@ export const Route = createFileRoute("/_authenticated/templates/$id")({
       { name: "description", content: "Configure the fields this extraction AI model pulls from loss runs." },
       { property: "og:title", content: "Edit AI model — Loss Run Extractor" },
       { property: "og:description", content: "Configure the fields this extraction AI model pulls from loss runs." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: EditTemplate,
@@ -35,7 +37,7 @@ function EditTemplate() {
   const q = useQuery({ queryKey: ["template", id], queryFn: () => get({ data: { id } }) });
   const [name, setName] = useState("");
   const [fields, setFields] = useState<Field[]>([]);
-  const isSystem = !!(q.data as any)?.is_system;
+  const isSystem = !!(q.data as any)?.is_system || (q.data as any)?.label === "System";
 
   useEffect(() => {
     if (q.data) {
@@ -65,12 +67,12 @@ function EditTemplate() {
   }
 
   return (
-    <div className="p-6 max-w-5xl space-y-6">
+    <div className="p-4 md:p-6 max-w-5xl space-y-6">
       <div className="flex items-center gap-2">
         <Link to="/templates"><Button variant="ghost" size="sm"><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button></Link>
       </div>
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-row flex-wrap gap-3 items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             AI model
             {isSystem && <Badge variant="secondary">System — read only</Badge>}
@@ -90,7 +92,7 @@ function EditTemplate() {
         </CardContent>
       </Card>
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-row flex-wrap gap-3 items-center justify-between">
           <CardTitle>Fields</CardTitle>
           {!isSystem && (
             <Button size="sm" onClick={() => setFields((p) => [...p, { key: `field_${p.length + 1}`, label: "New field", required: false, hint: "", value: "" }])}>
@@ -98,27 +100,29 @@ function EditTemplate() {
             </Button>
           )}
         </CardHeader>
-        <CardContent className="space-y-2">
-          <div className="grid grid-cols-12 gap-2 text-xs font-medium text-muted-foreground px-2">
+        <CardContent className="space-y-2 overflow-x-auto">
+          <div className="min-w-[760px] grid grid-cols-12 gap-2 text-xs font-medium text-muted-foreground px-2">
             <div className="col-span-3">Key</div>
             <div className="col-span-3">Label</div>
-            <div className="col-span-5">Hint</div>
+            <div className="col-span-3">Hint</div>
+            <div className="col-span-2">True value</div>
             <div className="col-span-1 text-center">Req</div>
           </div>
           {fields.map((f, i) => (
-            <div key={i} className="grid grid-cols-12 gap-2 items-center border rounded-md p-2">
+            <div key={i} className="min-w-[760px] grid grid-cols-12 gap-2 items-center border rounded-md p-2">
               {isSystem ? (
                 <>
                   <div className="col-span-3 text-sm truncate">{f.key}</div>
                   <div className="col-span-3 text-sm truncate">{f.label}</div>
-                  <div className="col-span-5 text-sm text-muted-foreground truncate">{f.hint}</div>
+                  <div className="col-span-3 text-sm text-muted-foreground truncate">{f.hint}</div>
+                   <div className="col-span-2 text-sm truncate">{f.value || "—"}</div>
                   <div className="col-span-1 flex justify-center text-xs">{f.required ? "Yes" : "—"}</div>
                 </>
               ) : (
                 <>
                   <Input className="col-span-3" value={f.key} onChange={(e) => updateField(i, { key: e.target.value.replace(/\s+/g, "_").toLowerCase() })} />
                   <Input className="col-span-3" value={f.label} onChange={(e) => updateField(i, { label: e.target.value })} />
-                  <Input className="col-span-5" placeholder="Hint for AI" value={f.hint} onChange={(e) => updateField(i, { hint: e.target.value })} />
+                  <Input className="col-span-3" placeholder="Hint for AI" value={f.hint} onChange={(e) => updateField(i, { hint: e.target.value })} />
                   <div className="col-span-1 flex items-center justify-center gap-1">
                     <Checkbox checked={f.required} onCheckedChange={(v) => updateField(i, { required: !!v })} />
                     <Button variant="ghost" size="icon" onClick={() => setFields((p) => p.filter((_, idx) => idx !== i))}><Trash2 className="h-4 w-4" /></Button>

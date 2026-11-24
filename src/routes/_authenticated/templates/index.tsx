@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { listTemplates, listLobs, createTemplate, deleteTemplate, setTemplateLabel, copyTemplate } from "@/lib/templates.functions";
+import { listTemplates, listLobs, createTemplate, deleteTemplate, setTemplateLabel, copyTemplate, setModelSource } from "@/lib/templates.functions";
 import { analyzeDocumentPages, inferFieldsFromPage } from "@/lib/template-infer.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
@@ -24,6 +24,8 @@ export const Route = createFileRoute("/_authenticated/templates/")({
       { name: "description", content: "Manage extraction AI models for each line of business." },
       { property: "og:title", content: "AI models — Loss Run Extractor" },
       { property: "og:description", content: "Manage extraction AI models for each line of business." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: TemplatesPage,
@@ -48,6 +50,7 @@ function TemplatesPage() {
   const copy = useServerFn(copyTemplate);
   const analyzePages = useServerFn(analyzeDocumentPages);
   const inferPage = useServerFn(inferFieldsFromPage);
+  const setSource = useServerFn(setModelSource);
   const setLabel = useServerFn(setTemplateLabel);
 
   const qc = useQueryClient();
@@ -63,6 +66,8 @@ function TemplatesPage() {
   const [page, setPage] = useState<string>("");
   const [reason, setReason] = useState<string>("");
   const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [sourceKind, setSourceKind] = useState<"Standard" | "Golden Source" | "Edge Case">("Standard");
+  const [goldenId, setGoldenId] = useState("none");
   const [busy, setBusy] = useState(false);
 
   const dm = useMutation({ mutationFn: (id: string) => del({ data: { id } }), onSuccess: () => qc.invalidateQueries({ queryKey: ["templates"] }) });
@@ -81,6 +86,12 @@ function TemplatesPage() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const sm = useMutation({
+    mutationFn: (p: { id: string; source_kind: "Standard" | "Golden Source" | "Edge Case"; golden_template_id?: string | null }) => setSource({ data: p }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["templates"] }); toast.success("Source classification updated"); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   async function submitStep1(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim() || !lobId || !file) {
@@ -90,7 +101,8 @@ function TemplatesPage() {
     setBusy(true);
     try {
       const { data: userRes } = await supabase.auth.getUser();
-      const uid = userRes.user!.id;
+      const uid = userRes.user?.id;
+      if (!uid) throw new Error("Please sign in again");
       const path = `${uid}/${Date.now()}-${file.name}`;
       const { error } = await supabase.storage.from("template-uploads").upload(path, file, { upsert: false });
       if (error) throw new Error(error.message);
@@ -137,6 +149,8 @@ function TemplatesPage() {
           fields: draft.map(({ key, label, required, hint, value }) => ({ key, label, required, hint, value })),
           source_file_path: sourcePath,
           label: "Custom",
+          source_kind: sourceKind,
+          golden_template_id: sourceKind === "Edge Case" && goldenId !== "none" ? goldenId : null,
         },
       });
       qc.invalidateQueries({ queryKey: ["templates"] });
@@ -151,7 +165,7 @@ function TemplatesPage() {
 
   function reset() {
     setName(""); setLobId(""); setFile(null); setDraft(null); setSourcePath("");
-    setPages([]); setPage(""); setReason(""); setStep(1);
+    setPages([]); setPage(""); setReason(""); setStep(1); setSourceKind("Standard"); setGoldenId("none");
   }
 
   return (
@@ -182,7 +196,7 @@ function TemplatesPage() {
                 </div>
                 <div>
                   <Label>Line of business</Label>
-                  <Select value={lobId} onValueChange={setLobId}>
+                  <Select value={lobId} onValueChange={(v) => { setLobId(v); setGoldenId("none"); }}>
                     <SelectTrigger><SelectValue placeholder="Line of business" /></SelectTrigger>
                     <SelectContent>
                       {(lobList.data as any[] | undefined)?.map((l) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}
@@ -190,6 +204,23 @@ function TemplatesPage() {
                   </Select>
                 </div>
               </div>
+              <div>
+                <Label>Source classification</Label>
+                <Select value={sourceKind} onValueChange={(v) => { setSourceKind(v as typeof sourceKind); setGoldenId("none"); }}>
+                  <SelectTrigger aria-label="Source classification"><SelectValue /></SelectTrigger>
+                  <SelectContent>{["Standard", "Golden Source", "Edge Case"].map((kind) => <SelectItem key={kind} value={kind}>{kind}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              {sourceKind === "Edge Case" && <div>
+                <Label>Reference Golden Source</Label>
+                <Select value={goldenId} onValueChange={setGoldenId}>
+                  <SelectTrigger aria-label="Reference Golden Source"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Not linked</SelectItem>
+                    {(templates.data ?? []).filter((t: any) => t.source_kind === "Golden Source" && (t.lob_id === lobId || t.is_baseline)).map((t: any) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>}
               <div>
                 <Label>Sample loss run</Label>
                 <label className="mt-1 flex flex-col items-center justify-center border-2 border-dashed rounded-md p-6 cursor-pointer hover:bg-accent">
@@ -212,14 +243,15 @@ function TemplatesPage() {
                 <p className="text-sm text-muted-foreground">Does this page cover every field you want to extract? Pick another one to see it in the preview.</p>
                 <div className="grid gap-2">
                   {pages.map((p) => (
-                    <button
+                    <Button
+                      variant="outline"
                       key={p}
                       type="button"
                       onClick={() => setPage(p)}
                       className={`rounded-md border px-3 py-2 text-sm text-left ${p === page ? "border-primary bg-primary/10" : "hover:bg-accent"}`}
                     >
                       {p}
-                    </button>
+                    </Button>
                   ))}
                 </div>
                 <div className="flex gap-2">
@@ -251,7 +283,7 @@ function TemplatesPage() {
                       <Input className="col-span-4" placeholder="value" value={f.value} onChange={(e) => patch(i, { value: e.target.value })} />
                       <div className="col-span-2 flex items-center justify-center gap-2">
                         <Checkbox checked={f.required} onCheckedChange={(v) => patch(i, { required: !!v })} />
-                        <Button type="button" variant="ghost" size="icon" onClick={() => setDraft((d) => d!.filter((_, idx) => idx !== i))}><Trash2 className="h-4 w-4" /></Button>
+                        <Button type="button" variant="ghost" size="icon" onClick={() => setDraft((d) => (d ?? []).filter((_, idx) => idx !== i))}><Trash2 className="h-4 w-4" /></Button>
                       </div>
                     </div>
                     <Input placeholder="hint for the extraction model" value={f.hint} onChange={(e) => patch(i, { hint: e.target.value })} />
@@ -275,9 +307,9 @@ function TemplatesPage() {
         <CardHeader><CardTitle>All AI models</CardTitle></CardHeader>
         <CardContent className="space-y-1">
           {(templates.data as any[] | undefined)?.map((t) => (
-            <div key={t.id} className="flex items-center justify-between border rounded-md px-3 py-2">
+            <div key={t.id} className="flex flex-wrap items-start justify-between gap-3 border rounded-md px-3 py-2">
               <div className="min-w-0">
-                <div className="flex items-center gap-2 text-sm font-medium">
+                <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
                   {t.name}
                   <Badge variant={t.label === "System" ? "secondary" : "outline"}>{t.label ?? "Custom"}</Badge>
                 </div>
@@ -285,8 +317,16 @@ function TemplatesPage() {
                   {t.lines_of_business?.name} · {(t.fields as any[])?.length ?? 0} fields
                 </div>
               </div>
-              <div className="flex items-center gap-1">
-                {t.is_system ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <Select value={t.source_kind ?? "Standard"} disabled={sm.isPending} onValueChange={(v) => sm.mutate({ id: t.id, source_kind: v as "Standard" | "Golden Source" | "Edge Case", golden_template_id: null })}>
+                  <SelectTrigger aria-label={`Source classification for ${t.name}`} className="h-8 w-40 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>{["Standard", "Golden Source", "Edge Case"].map((kind) => <SelectItem key={kind} value={kind}>{kind}</SelectItem>)}</SelectContent>
+                </Select>
+                {t.source_kind === "Edge Case" && <Select value={t.golden_template_id ?? "none"} disabled={sm.isPending} onValueChange={(v) => sm.mutate({ id: t.id, source_kind: "Edge Case", golden_template_id: v === "none" ? null : v })}>
+                  <SelectTrigger aria-label={`Golden Source for ${t.name}`} className="h-8 w-44 text-xs"><SelectValue placeholder="Golden Source" /></SelectTrigger>
+                  <SelectContent><SelectItem value="none">Not linked</SelectItem>{(templates.data ?? []).filter((g: any) => g.id !== t.id && g.source_kind === "Golden Source" && (g.lob_id === t.lob_id || g.is_baseline)).map((g: any) => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}</SelectContent>
+                </Select>}
+                {t.is_system || t.label === "System" ? (
                   <Button variant="outline" size="sm" onClick={() => cm.mutate(t.id)} disabled={cm.isPending}>
                     <Copy className="h-4 w-4 mr-1" /> Copy &amp; edit
                   </Button>
@@ -298,9 +338,9 @@ function TemplatesPage() {
                         {["System", "Custom", "Carrier"].map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}
                       </SelectContent>
                     </Select>
-                    <Button variant="ghost" size="icon" onClick={() => cm.mutate(t.id)}><Copy className="h-4 w-4" /></Button>
-                    <Link to="/templates/$id" params={{ id: t.id }}><Button variant="ghost" size="icon"><Pencil className="h-4 w-4" /></Button></Link>
-                    <Button variant="ghost" size="icon" onClick={() => dm.mutate(t.id)}><Trash2 className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon" aria-label={`Copy ${t.name}`} onClick={() => cm.mutate(t.id)}><Copy className="h-4 w-4" /></Button>
+                    <Link to="/templates/$id" params={{ id: t.id }}><Button variant="ghost" size="icon" aria-label={`Edit ${t.name}`}><Pencil className="h-4 w-4" /></Button></Link>
+                    <Button variant="ghost" size="icon" aria-label={`Delete ${t.name}`} onClick={() => dm.mutate(t.id)}><Trash2 className="h-4 w-4" /></Button>
                   </>
                 )}
               </div>

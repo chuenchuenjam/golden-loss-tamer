@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { listUsersWithRoles, setUserRole, addTeamMember, setUserLob } from "@/lib/admin.functions";
+import { listUsersWithRoles, setUserRole, addTeamMember, setUserLob, setUserModelAccess } from "@/lib/admin.functions";
 import { listLobs } from "@/lib/templates.functions";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,7 +12,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { UserPlus } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { UserPlus, Settings2 } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/admin/team")({
@@ -22,6 +24,8 @@ export const Route = createFileRoute("/_authenticated/admin/team")({
       { name: "description", content: "Manage team members and admin roles." },
       { property: "og:title", content: "Team — Loss Run Extractor" },
       { property: "og:description", content: "Manage team members and admin roles." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: TeamPage,
@@ -32,6 +36,12 @@ function TeamPage() {
   const roleFn = useServerFn(setUserRole);
   const addFn = useServerFn(addTeamMember);
   const qc = useQueryClient();
+  const accessFn = useServerFn(setUserModelAccess);
+  const am = useMutation({
+    mutationFn: (p: { user_id: string; template_id: string; enabled: boolean }) => accessFn({ data: p }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["team"] }); qc.invalidateQueries({ queryKey: ["templates"] }); toast.success("AI model access updated"); },
+    onError: (e: Error) => toast.error(e.message),
+  });
   const lobFn = useServerFn(setUserLob);
   const lobsFn = useServerFn(listLobs);
   const { data: lobs = [] } = useQuery({ queryKey: ["lobs"], queryFn: () => lobsFn() });
@@ -48,7 +58,7 @@ function TeamPage() {
 
   const add = useMutation({
     mutationFn: () =>
-      addFn({ data: { email: email.trim(), password, display_name: displayName.trim() || undefined } }),
+      addFn({ data: { email: email.trim(), password, ...(displayName.trim() ? { display_name: displayName.trim() } : {}) } }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["team"] });
       toast.success(`${email.trim()} can now sign in with the temporary password`);
@@ -68,7 +78,7 @@ function TeamPage() {
   if (error) return <div className="p-6 text-sm text-destructive">{(error as any).message}</div>;
 
   return (
-    <div className="p-6 max-w-5xl space-y-4">
+    <div className="p-4 md:p-6 max-w-7xl space-y-4">
       <div>
         <h1 className="text-2xl font-semibold">Team</h1>
         <p className="text-sm text-muted-foreground">Add members and grant admin access. Admins can manage templates.</p>
@@ -113,24 +123,41 @@ function TeamPage() {
                   <TableCell className="text-sm">{u.display_name ?? "—"}</TableCell>
                   <TableCell className="min-w-48">
                     <Select
+                      disabled={lm.isPending}
                       value={u.lob_id ?? "none"}
                       onValueChange={(v) => lm.mutate({ user_id: u.user_id, lob_id: v === "none" ? null : v })}
                     >
-                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectTrigger aria-label={`Line of business for ${u.email}`} className="h-8 text-xs"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">Not assigned</SelectItem>
                         {(lobs as any[]).map((l) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </TableCell>
-                  <TableCell className="max-w-64">
+                  <TableCell className="min-w-64 max-w-80">
                     <div className="flex flex-wrap gap-1">
                       {u.models.map((n: string) => <Badge key={n} variant="outline" className="text-xs font-normal">{n}</Badge>)}
                     </div>
+                    {!u.roles.includes("admin") && (
+                      <Popover>
+                        <PopoverTrigger asChild><Button variant="outline" size="sm" className="mt-2" aria-label={`Model access for ${u.email}`}><Settings2 className="mr-2 h-4 w-4" /> Model access</Button></PopoverTrigger>
+                        <PopoverContent className="w-80 max-w-[calc(100vw-2rem)] space-y-3">
+                          <div className="text-sm font-semibold">AI model access</div>
+                          {u.model_access.map((model: any) => (
+                            <label key={model.id} className="flex items-start gap-2 text-sm">
+                              <Checkbox aria-label={model.name} checked={model.enabled} disabled={am.isPending || !model.eligible} onCheckedChange={(v) => am.mutate({ user_id: u.user_id, template_id: model.id, enabled: v === true })} />
+                              <span>{model.name}{!model.eligible && <span className="block text-xs text-muted-foreground">Different line of business</span>}{model.eligible && !model.enabled && !model.is_baseline && <span className="block text-xs text-muted-foreground">Releasing mid-Jan 2027</span>}</span>
+                            </label>
+                          ))}
+                        </PopoverContent>
+                      </Popover>
+                    )}
                   </TableCell>
                   <TableCell>{u.roles.map((r: string) => <Badge key={r} variant="secondary" className="mr-1">{r}</Badge>)}</TableCell>
                   <TableCell>
                     <Switch
+                      aria-label={`Admin access for ${u.email}`}
+                      disabled={m.isPending}
                       checked={u.roles.includes("admin")}
                       onCheckedChange={(v) => m.mutate({ user_id: u.user_id, role: "admin", grant: v })}
                     />

@@ -14,6 +14,8 @@ export const Route = createFileRoute("/auth")({
       { name: "description", content: "Sign in to your loss run extraction workspace." },
       { property: "og:title", content: "Sign in — Loss Run Extractor" },
       { property: "og:description", content: "Sign in to your loss run extraction workspace." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   beforeLoad: async () => {

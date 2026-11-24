@@ -13,6 +13,7 @@ type Field = {
   type?: "string" | "number" | "date" | "boolean";
   required?: boolean;
   hint?: string;
+  value?: string;
 };
 
 function buildRowSchema(fields: Field[]) {
@@ -45,7 +46,7 @@ export const runExtraction = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ job_id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
-    const apiKey = process.env.LOVABLE_API_KEY;
+    const apiKey = process.env["LOVABLE_API_KEY"];
     if (!apiKey) throw new Error("Missing LOVABLE_API_KEY");
 
     const { data: job, error: je } = await context.supabase
@@ -54,6 +55,9 @@ export const runExtraction = createServerFn({ method: "POST" })
       .eq("id", data.job_id)
       .single();
     if (je || !job) throw new Error(je?.message ?? "Job not found");
+
+    const { data: allowed, error: accessError } = await context.supabase.rpc("can_use_model", { _user_id: context.userId, _template_id: job.template_id, _lob_id: job.lob_id });
+    if (accessError || !allowed) throw new Error("This AI model is not available for your account or line of business");
 
     const fields = ((job.templates as any)?.fields ?? []) as Field[];
     if (fields.length === 0) throw new Error("Template has no fields");
@@ -72,11 +76,12 @@ export const runExtraction = createServerFn({ method: "POST" })
     await context.supabase.from("data_quality_issues").delete().eq("job_id", data.job_id);
 
     const fieldsList = fields
-      .map((f) => `- ${f.key}${f.required ? " (required)" : ""}: ${f.label}${f.hint ? ` — ${f.hint}` : ""}`)
+      .map((f) => `- ${f.key}${f.required ? " (required)" : ""}: ${f.label}${f.hint ? ` — ${f.hint}` : ""}${f.value ? ` — Reviewed example only: ${JSON.stringify(f.value)}` : ""}`)
       .join("\n");
 
     const sysPrompt = `You extract loss-run claim rows from insurance documents.
 Return one entry per claim. Use null for unknown values. Dates as YYYY-MM-DD. Numbers as plain numbers (no currency symbols).
+Reviewed examples describe sample field values, not fixed output values. Always extract actual values from the uploaded document; never substitute an example for a missing value.
 Fields:
 ${fieldsList}`;
 

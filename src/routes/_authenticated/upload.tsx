@@ -22,6 +22,8 @@ export const Route = createFileRoute("/_authenticated/upload")({
       { name: "description", content: "Upload loss run documents and extract fields with AI." },
       { property: "og:title", content: "New extraction — Loss Run Extractor" },
       { property: "og:description", content: "Upload loss run documents and extract fields with AI." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: UploadPage,
@@ -55,14 +57,15 @@ function UploadPage() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!carrier.trim() || !templateId || !lobId || files.length === 0) {
+    if (!carrier.trim() || !templateId || !lobId || files.length === 0 || !filteredTemplates.find((t) => t.id === templateId)?.available) {
       toast.error("Carrier name, line of business, AI model and at least one file are required");
       return;
     }
     setBusy(true);
     try {
       const { data: userRes } = await supabase.auth.getUser();
-      const uid = userRes.user!.id;
+      const uid = userRes.user?.id;
+      if (!uid) throw new Error("Please sign in again");
       const uploaded: any[] = [];
       for (const f of files) {
         setProgress(`Uploading ${f.name}...`);
@@ -133,7 +136,7 @@ function UploadPage() {
               <div>
                 <Label>Line of business</Label>
                 <Select value={lobId} onValueChange={(v) => { setLobId(v); setTemplateId(""); }}>
-                  <SelectTrigger><SelectValue placeholder="Select LoB" /></SelectTrigger>
+                  <SelectTrigger aria-label="Line of business"><SelectValue placeholder="Select LoB" /></SelectTrigger>
                   <SelectContent>
                     {(lobs.data as any[] | undefined)?.map((l) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}
                   </SelectContent>
@@ -143,9 +146,9 @@ function UploadPage() {
             <div>
               <Label>AI model</Label>
               <Select value={templateId} onValueChange={setTemplateId}>
-                <SelectTrigger><SelectValue placeholder={lobId ? "Select AI model" : "Pick LoB first"} /></SelectTrigger>
+                <SelectTrigger aria-label="AI model"><SelectValue placeholder={lobId ? "Select AI model" : "Pick LoB first"} /></SelectTrigger>
                 <SelectContent>
-                  {filteredTemplates.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                  {filteredTemplates.map((t) => <SelectItem key={t.id} value={t.id} disabled={!t.available}><span className="whitespace-normal">{t.name}{!t.available && <span className="block text-xs text-muted-foreground">{t.availability_label}</span>}</span></SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -166,7 +169,7 @@ function UploadPage() {
               </div>
             </div>
             {progress && <p className="text-sm text-muted-foreground">{progress}</p>}
-            <Button className="w-full" disabled={busy}>{busy ? "Working..." : "Start extraction"}</Button>
+            <Button className="w-full" disabled={busy || !templateId}>{busy ? "Working..." : "Start extraction"}</Button>
           </form>
         </CardContent>
       </Card>

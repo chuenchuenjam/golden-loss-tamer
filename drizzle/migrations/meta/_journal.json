@@ -15,6 +15,20 @@
       "when": 1795107941322,
       "tag": "0001_profile_lob_and_lob_read_scope",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795556059261,
+      "tag": "0002_model_rollout_entitlements_and_sources",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1795556238821,
+      "tag": "0003_safe_model_catalogue",
+      "breakpoints": true
     }
   ]
 }

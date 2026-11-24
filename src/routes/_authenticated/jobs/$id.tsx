@@ -25,6 +25,8 @@ export const Route = createFileRoute("/_authenticated/jobs/$id")({
       { name: "description", content: "Review extracted rows, data quality issues, and export to Excel." },
       { property: "og:title", content: "Job — Loss Run Extractor" },
       { property: "og:description", content: "Review extracted rows, data quality issues, and export to Excel." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: JobDetail,
