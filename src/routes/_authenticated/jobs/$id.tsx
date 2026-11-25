@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { JobSummary } from "@/components/JobSummary";
 import { ExcessKpiCards, UWSummary } from "@/components/ExcessSummary";
 import { PrimarySummary } from "@/components/PrimarySummary";
+import { normalizePrimaryClaimData, PRIMARY_CLAIM_FIELDS, primaryClaimValue } from "@/lib/primary-claim-fields";
 
 export const Route = createFileRoute("/_authenticated/jobs/$id")({
   head: () => ({
@@ -73,7 +74,15 @@ function JobDetail() {
 
   const editCell = useMutation({
     mutationFn: async (p: { row: any; key: string; value: string }) => {
-      const next = { ...(p.row.data ?? {}), [p.key]: p.value === "" ? null : p.value };
+      const primaryField = PRIMARY_CLAIM_FIELDS.find((f) => f.key === p.key);
+      let value: string | number | null = p.value === "" ? null : p.value;
+      if (isPrimary && primaryField?.type === "number" && value !== null) {
+        const parsed = Number(value);
+        if (!Number.isFinite(parsed)) throw new Error(`${primaryField.label} must be a number`);
+        value = parsed;
+      }
+      const changed = { ...(p.row.data ?? {}), [p.key]: value };
+      const next = isPrimary ? normalizePrimaryClaimData(changed) : changed;
       await updRow({ data: { id: p.row.id, data: next } });
       await recFn({ data: { job_id: id } });
     },
@@ -97,6 +106,7 @@ function JobDetail() {
   const isExcess = job.lines_of_business?.slug === "construction-excess-casualty";
   const isPrimary = job.lines_of_business?.slug === "construction-primary-casualty";
   const hasUw = isExcess || isPrimary;
+  const rowFields = isPrimary ? PRIMARY_CLAIM_FIELDS : fields;
   const included = rows.filter((r) => r.included_in_export).length;
 
   return (
@@ -132,6 +142,7 @@ function JobDetail() {
 
         <TabsContent value="rows">
           <Card>
+            {isPrimary && <div className="border-b px-3 py-2 text-xs text-muted-foreground">18 claim-level columns. Total Incurred = three paid components + three reserve components; salvage and subrogation recoveries remain separate.</div>}
             <CardContent className="p-0 overflow-auto">
               <Table>
                 <TableHeader>
@@ -142,7 +153,7 @@ function JobDetail() {
                     /></TableHead>
                     <TableHead>Issues</TableHead>
                     <TableHead>Source</TableHead>
-                    {fields.map((f) => <TableHead key={f.key}>{f.label}</TableHead>)}
+                    {rowFields.map((f) => <TableHead key={f.key} className="whitespace-nowrap" title={f.hint}>{f.label}</TableHead>)}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -155,9 +166,9 @@ function JobDetail() {
                         <TableCell><Checkbox checked={r.included_in_export} onCheckedChange={(v) => setInclude.mutate({ row_id: r.id, v: !!v })} /></TableCell>
                         <TableCell>{rowIssues.length > 0 && <Badge variant={hasError ? "destructive" : "secondary"}>{rowIssues.length}</Badge>}</TableCell>
                         <TableCell className="text-xs">{r.source_file}</TableCell>
-                        {fields.map((f) => {
+                        {rowFields.map((f) => {
                           const bad = rowIssues.some((i) => i.field === f.key);
-                          const v = r.data?.[f.key];
+                          const v = isPrimary ? primaryClaimValue(r.data ?? {}, f.key) : r.data?.[f.key];
                           return (
                             <TableCell key={f.key} className="p-1">
                               <input
@@ -178,7 +189,7 @@ function JobDetail() {
                       </TableRow>
                     );
                   })}
-                  {rows.length === 0 && <TableRow><TableCell colSpan={fields.length + 3} className="text-center text-sm text-muted-foreground">No rows extracted.</TableCell></TableRow>}
+                  {rows.length === 0 && <TableRow><TableCell colSpan={rowFields.length + 3} className="text-center text-sm text-muted-foreground">No rows extracted.</TableCell></TableRow>}
                 </TableBody>
               </Table>
             </CardContent>

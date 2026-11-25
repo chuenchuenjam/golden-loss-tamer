@@ -3,6 +3,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { reconcileRow } from "./excess-recon";
 import { reconcilePrimaryRow } from "./primary-recon";
+import { normalizePrimaryClaimData } from "./primary-claim-fields";
 import { generateText, Output, NoObjectGeneratedError } from "ai";
 import { createLovableAiGateway } from "./ai-gateway.server";
 import { spreadsheetToText } from "./file-parse.server";
@@ -61,6 +62,7 @@ export const runExtraction = createServerFn({ method: "POST" })
 
     const fields = ((job.templates as any)?.fields ?? []) as Field[];
     if (fields.length === 0) throw new Error("Template has no fields");
+    const isPrimary = fields.some((f) => f.key === "paid_indemnity_prop_damage") || (fields.some((f) => f.key === "paid_alae") && fields.some((f) => f.key === "loss_reserve"));
 
     await context.supabase
       .from("extraction_jobs")
@@ -134,7 +136,7 @@ ${fieldsList}`;
               job_id: data.job_id,
               row_index: insertedRows++,
               source_file: name,
-              data: row,
+              data: isPrimary ? normalizePrimaryClaimData(row) : row,
             });
             if (ie) console.error("insert row error", ie);
           }
@@ -200,7 +202,7 @@ export const reconcileJob = createServerFn({ method: "POST" })
 
     const byClaim = new Map<string, any[]>();
     const isExcess = fields.some((f) => f.key === "incurred_indemnity") && fields.some((f) => f.key === "record_type");
-    const isPrimary = fields.some((f) => f.key === "paid_alae") && fields.some((f) => f.key === "loss_reserve");
+    const isPrimary = fields.some((f) => f.key === "paid_indemnity_prop_damage") || (fields.some((f) => f.key === "paid_alae") && fields.some((f) => f.key === "loss_reserve"));
     for (const r of rows ?? []) {
       const d: any = r.data ?? {};
       if (isPrimary) {

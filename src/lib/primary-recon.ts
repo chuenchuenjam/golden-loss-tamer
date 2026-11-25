@@ -1,5 +1,6 @@
 // Construction - Primary Casualty reconciliation (mirrors the PLUMB "Loss Run Format" workbook).
-import { num, sum2, type Num } from "./excess-recon";
+import { num, type Num } from "./excess-recon";
+import { calculatePrimaryTotals, primaryClaimValue } from "./primary-claim-fields";
 
 export const PRIMARY_LINES = ["GL", "AL", "APD", "WC"] as const;
 export type PrimaryLine = (typeof PRIMARY_LINES)[number];
@@ -17,20 +18,24 @@ export function isLargeLoss(d: Record<string, unknown>) {
   return /large/i.test(String(d["record_type"] ?? ""));
 }
 
-/** Total Incurred = Paid Loss + Loss Reserve + Paid ALAE + ALAE Reserve; Total Paid = Paid Loss + Paid ALAE. */
+/** Total Incurred is gross paid plus reserves; recoveries remain a separate disclosure. */
 export function reconcilePrimaryRow(d: Record<string, unknown>) {
-  const pl = num(d["paid_loss"]), lr = num(d["loss_reserve"]), pa = num(d["paid_alae"]), ar = num(d["alae_reserve"]);
-  const totalPaid: Num = sum2(pl, pa);
-  const totalIncurred: Num = sum2(sum2(pl, lr), sum2(pa, ar));
+  const totals = calculatePrimaryTotals(d);
+  const totalIncurred: Num = totals.totalIncurred;
+  const totalPaid: Num = totals.totalPaid;
   const statedIncurred = num(d["total_incurred"]);
   const statedPaid = num(d["total_paid"]);
   const issues: string[] = [];
   const off = (a: Num, b: Num) => a !== null && b !== null && Math.abs(a - b) > 1;
   if (off(totalIncurred, statedIncurred))
-    issues.push(`Total Incurred stated ${statedIncurred} but Paid Loss + Loss Reserve + Paid ALAE + ALAE Reserve = ${totalIncurred}`);
+    issues.push(`Total Incurred stated ${statedIncurred} but the six paid and reserve components = ${totalIncurred}`);
   if (off(totalPaid, statedPaid))
-    issues.push(`Total Paid stated ${statedPaid} but Paid Loss + Paid ALAE = ${totalPaid}`);
+    issues.push(`Total Paid stated ${statedPaid} but Paid Indemnity/Prop Damage + Paid Medical/Bodily Injury + Paid Expense = ${totalPaid}`);
   if (statedPaid !== null && statedIncurred !== null && statedPaid > statedIncurred + 1)
     issues.push(`Total Paid ${statedPaid} exceeds Total Incurred ${statedIncurred}`);
   return { totalIncurred, totalPaid, statedIncurred, statedPaid, issues };
+}
+
+export function primaryLineOfRow(d: Record<string, unknown>) {
+  return primaryLineOf(primaryClaimValue(d, "lob"));
 }

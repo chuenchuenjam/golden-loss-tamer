@@ -3,7 +3,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { num } from "@/lib/excess-recon";
-import { PRIMARY_LINES, primaryLineOf, isLargeLoss, reconcilePrimaryRow, type PrimaryLine } from "@/lib/primary-recon";
+import { PRIMARY_LINES, primaryLineOfRow, isLargeLoss, reconcilePrimaryRow, type PrimaryLine } from "@/lib/primary-recon";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { LargeLossThreshold } from "@/components/LargeLossThreshold";
@@ -107,7 +107,7 @@ export function PrimarySummary({ rows }: { rows: Row[] }) {
   const [threshold, setThreshold] = useState(DEFAULT_LARGE_LOSS);
   const byLine = new Map<PrimaryLine, Row[]>();
   for (const r of rows) {
-    const l = primaryLineOf(r.data?.["coverage_line"]);
+    const l = primaryLineOfRow(r.data ?? {});
     if (!l) continue;
     byLine.set(l, [...(byLine.get(l) ?? []), { ...r, data: r.data ?? {} }]);
   }
@@ -115,7 +115,7 @@ export function PrimarySummary({ rows }: { rows: Row[] }) {
     <div className="space-y-3">
       <p className="text-xs text-muted-foreground">
         One tab per product line, laid out like the PLUMB loss run format. <span className="px-1 bg-highlight text-highlight-foreground rounded">Highlighted</span> columns are the fields to paste into PLUMB.
-        Each row checks Total Incurred = Paid Loss + Loss Reserve + Paid ALAE + ALAE Reserve and Total Paid = Paid Loss + Paid ALAE. Fix values in the Rows tab.
+        Each row checks gross Total Incurred against the six paid/reserve components and Total Paid against the three paid components. Recoveries stay separate. Fix values in the Rows tab.
       </p>
       <LargeLossThreshold value={threshold} onChange={setThreshold} />
       <Tabs defaultValue="GL">
