@@ -3,7 +3,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { reconcileRow } from "./excess-recon";
 import { reconcilePrimaryRow } from "./primary-recon";
-import { normalizePrimaryClaimData } from "./primary-claim-fields";
+import { normalizePrimaryClaimData, primaryClaimValue } from "./primary-claim-fields";
 import { generateText, Output, NoObjectGeneratedError } from "ai";
 import { createLovableAiGateway } from "./ai-gateway.server";
 import { spreadsheetToText } from "./file-parse.server";
@@ -217,7 +217,8 @@ export const reconcileJob = createServerFn({ method: "POST" })
       }
       // Required fields present
       for (const k of requiredKeys) {
-        if (d[k] === null || d[k] === undefined || d[k] === "") {
+        const requiredValue = isPrimary ? primaryClaimValue(d, k) : d[k];
+        if (requiredValue === null || requiredValue === undefined || requiredValue === "") {
           issues.push({
             job_id: data.job_id,
             row_id: r.id,
