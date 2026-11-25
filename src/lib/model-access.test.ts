@@ -22,3 +22,17 @@ describe("model rollout access", () => {
     expect(canUseModel(excess, false, "primary", true)).toBe(false);
   });
 });
+import { canSeeUwSummary as uw } from "./model-access";
+describe("UW summary access", () => {
+  const mm = { id: "mm", is_baseline: true, lob_id: null };
+  const ex = { id: "ex", is_baseline: false, lob_id: "excess" };
+  it("MM-only user cannot see the UW summary", () => {
+    expect(uw([mm, ex], false, "excess", new Map(), "excess")).toBe(false);
+  });
+  it("user granted the LoB model sees its UW summary", () => {
+    expect(uw([mm, ex], false, "excess", new Map([["ex", true]]), "excess")).toBe(true);
+  });
+  it("admin always sees it", () => {
+    expect(uw([mm], true, null, new Map(), "excess")).toBe(true);
+  });
+});

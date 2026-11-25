@@ -11,3 +11,9 @@ export function modelAvailability(model: ModelAccess, available: boolean): strin
   if (available) return "Available";
   return model.is_baseline ? "Access not assigned" : "Releasing mid-Jan 2027";
 }
+// UW summaries belong to a LoB: only access to a released LoB-specific model unlocks one.
+export function canSeeUwSummary(models: (ModelAccess & { id: string })[], admin: boolean, userLob: string | null, overrides: Map<string, boolean>, jobLob: string | null): boolean {
+  if (admin) return true;
+  if (!jobLob) return false;
+  return models.some((m) => !m.is_baseline && m.lob_id === jobLob && canUseModel(m, false, userLob, overrides.get(m.id)));
+}

@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
+import { canSeeUwSummary } from "./model-access";
 
 const SourceFile = z.object({
   name: z.string(),
@@ -39,7 +40,13 @@ export const getJob = createServerFn({ method: "GET" })
       .from("data_quality_issues")
       .select("*")
       .eq("job_id", data.id);
-    return { job, rows: rows ?? [], issues: issues ?? [] };
+    const { data: admin } = await context.supabase.rpc("has_role", { _user_id: context.userId, _role: "admin" });
+    const { data: models } = await context.supabase.from("model_catalogue").select("id,is_baseline,lob_id");
+    const { data: profile } = await context.supabase.from("profiles").select("lob_id").eq("user_id", context.userId).single();
+    const { data: access } = await context.supabase.from("user_template_access").select("template_id,enabled").eq("user_id", context.userId);
+    const overrides = new Map((access ?? []).map((a: any) => [a.template_id, a.enabled as boolean]));
+    const uw_access = canSeeUwSummary((models ?? []) as any, !!admin, profile?.lob_id ?? null, overrides, (job as any).lob_id ?? null);
+    return { job, rows: rows ?? [], issues: issues ?? [], uw_access };
   });
 
 export const createJob = createServerFn({ method: "POST" })

@@ -105,7 +105,7 @@ function JobDetail() {
 
   const isExcess = job.lines_of_business?.slug === "construction-excess-casualty";
   const isPrimary = job.lines_of_business?.slug === "construction-primary-casualty";
-  const hasUw = isExcess || isPrimary;
+  const hasUw = (isExcess || isPrimary) && !!(q.data as any)?.uw_access;
   const rowFields = isPrimary ? PRIMARY_CLAIM_FIELDS : fields;
   const included = rows.filter((r) => r.included_in_export).length;
 
@@ -127,7 +127,7 @@ function JobDetail() {
         </div>
       </div>
 
-      {isExcess ? <ExcessKpiCards rows={rows} /> : <JobSummary rows={rows} issues={issues} />}
+      {isExcess && hasUw ? <ExcessKpiCards rows={rows} /> : <JobSummary rows={rows} issues={issues} />}
 
       <Tabs defaultValue={hasUw ? "uw" : "rows"}>
         <TabsList className="max-w-full justify-start overflow-x-auto">
